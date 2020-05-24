@@ -7,7 +7,11 @@
       "check-space"
     ],
     "curly": false,
-    "indent": [true, "spaces", 2],
+    "indent": [
+      true,
+      "spaces",
+      2
+    ],
     "interface-name": false,
     "jsdoc-format": true,
     "no-consecutive-blank-lines": false,
@@ -30,7 +34,10 @@
       "check-whitespace",
       "check-catch"
     ],
-    "semicolon": [true, "never"],
+    "semicolon": [
+      false,
+      "never"
+    ],
     "trailing-comma": [
       true,
       {
