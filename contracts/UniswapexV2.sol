@@ -8,9 +8,10 @@ import "./libs/ECDSA.sol";
 import "./libs/Fabric.sol";
 import "./interfaces/IModule.sol";
 import "./interfaces/IERC20.sol";
+import "./commons/Order.sol";
 
 
-contract UniswapEX {
+contract UniswapEX is Order{
     using SafeMath for uint256;
     using Fabric for bytes32;
 
@@ -30,7 +31,8 @@ contract UniswapEX {
         address _owner,
         address _witness,
         address _relayer,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _bought
     );
 
     event OrderCancelled(
@@ -43,9 +45,6 @@ contract UniswapEX {
         address _witness,
         uint256 _amount
     );
-
-    address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-    uint256 private constant never = uint(-1);
 
     mapping(bytes32 => uint256) public ethDeposits;
 
@@ -75,7 +74,7 @@ contract UniswapEX {
         require(fromToken == ETH_ADDRESS, "order is not from ETH");
 
         bytes32 key = _keyOf(
-            IModule(module),
+            IModule(uint160(module)),
             IERC20(fromToken),
             IERC20(toToken),
             minReturn,
@@ -125,61 +124,6 @@ contract UniswapEX {
             _fee,
             _owner,
             _witness,
-            amount
-        );
-    }
-
-    function executeOrder(
-        IModule _module,
-        IERC20 _fromToken,
-        IERC20 _toToken,
-        uint256 _minReturn,
-        uint256 _fee,
-        address payable _owner,
-        bytes calldata _witnesses,
-        bytes calldata _data
-    ) external {
-        // Calculate witness using signature
-        // avoid front-run by requiring msg.sender to know
-        // the secret
-        address witness = ECDSA.recover(
-            keccak256(abi.encodePacked(msg.sender)),
-            _witnesses
-        );
-
-        bytes32 key = _keyOf(
-            _module,
-            _fromToken,
-            _toToken,
-            _minReturn,
-            _fee,
-            _owner,
-            witness
-        );
-
-        // Pull amount
-        uint256 amount = _pullOrder(_fromToken, key);
-        require(amount > 0, "The order does not exists");
-
-        _module.execute(abi.encode(
-            _fromToken,
-            _toToken,
-            _minReturn,
-            _fee,
-            _owner,
-            amount,
-            _data
-        ));
-
-        emit OrderExecuted(
-            key,
-            address(_fromToken),
-            address(_toToken),
-            _minReturn,
-            _fee,
-            _owner,
-            witness,
-            msg.sender,
             amount
         );
     }
@@ -303,6 +247,86 @@ contract UniswapEX {
         }
     }
 
+
+
+    function vaultOfOrder(
+        IModule _module,
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        address _witness
+    ) public view returns (address) {
+        return _keyOf(
+            _module,
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            _witness
+        ).getVault();
+    }
+
+
+    function executeOrder(
+        IModule _module,
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _minReturn,
+        uint256 _fee,
+        address payable _owner,
+        bytes calldata _witnesses,
+        bytes calldata _data
+    ) external {
+        // Calculate witness using signature
+        // avoid front-run by requiring msg.sender to know
+        // the secret
+        address witness = ECDSA.recover(
+            keccak256(abi.encodePacked(msg.sender)),
+            _witnesses
+        );
+
+        bytes32 key = _keyOf(
+            _module,
+            _fromToken,
+            _toToken,
+            _minReturn,
+            _fee,
+            _owner,
+            witness
+        );
+
+        // Pull amount
+        uint256 amount = _pullOrder(_fromToken, key, address(_module));
+        require(amount > 0, "The order does not exists");
+
+        uint256 bought = _module.execute(
+            _fromToken,
+            _toToken,
+            amount,
+            _minReturn,
+            _fee,
+            _owner,
+            msg.sender,
+            _data
+        );
+
+        emit OrderExecuted(
+            key,
+            address(_fromToken),
+            address(_toToken),
+            _minReturn,
+            _fee,
+            _owner,
+            witness,
+            msg.sender,
+            amount,
+            bought
+        );
+    }
+
     function canExecuteOrder(
         IModule _module,
         IERC20 _fromToken,
@@ -331,46 +355,27 @@ contract UniswapEX {
             amount = _fromToken.balanceOf(key.getVault());
         }
 
-        return _module.canExecute(abi.encode(
+        return _module.canExecute(
             _fromToken,
             _toToken,
-            _minReturn,
-            _fee,
-            _owner,
             amount,
-            _data
-        ));
-    }
-
-    function vaultOfOrder(
-        IModule _module,
-        IERC20 _fromToken,
-        IERC20 _toToken,
-        uint256 _minReturn,
-        uint256 _fee,
-        address payable _owner,
-        address _witness
-    ) public view returns (address) {
-        return _keyOf(
-            _module,
-            _fromToken,
-            _toToken,
             _minReturn,
             _fee,
-            _owner,
-            _witness
-        ).getVault();
+            _data
+        );
     }
 
     function _pullOrder(
         IERC20 _fromToken,
-        bytes32 _key
+        bytes32 _key,
+        address payable _to
     ) private returns (uint256 amount) {
         if (address(_fromToken) == ETH_ADDRESS) {
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
+            _to.transfer(amount);
         } else {
-            amount = _key.executeVault(_fromToken, address(this));
+            amount = _key.executeVault(_fromToken, _to);
         }
     }
 
