@@ -23,76 +23,90 @@ contract LimitOrder is IModule, Order {
     receive() external override payable { }
 
     function execute(
-        IERC20 _fromToken,
-        IERC20 _toToken,
-        uint256 _amount,
-        uint256 _minReturn,
-        uint256 _fee,
+        IERC20 _inputToken,
+        uint256 _inputAmount,
         address payable _owner,
-        address payable _relayer,
-        bytes calldata _data
-    ) external override returns (uint256 bought){
-        if (address(_fromToken) == ETH_ADDRESS) {
+        bytes calldata _data,
+        bytes calldata _auxData
+    ) external override returns (uint256 bought) {
+        (IERC20 outputToken, uint256 minReturn, uint256 fee, address payable relayer) = abi.decode(
+            _data,
+            (
+                IERC20,
+                uint256,
+                uint256,
+                address
+            )
+        );
+
+        if (address(_inputToken) == ETH_ADDRESS) {
             // Keep some eth for paying the fee
-            uint256 sell = _amount.sub(_fee);
-            bought = _ethToToken(uniswapFactory, _toToken, sell, _owner);
-            _relayer.transfer(_fee);
-        } else if (address(_toToken) == ETH_ADDRESS) {
+            uint256 sell = _inputAmount.sub(fee);
+            bought = _ethToToken(uniswapFactory, outputToken, sell, _owner);
+            relayer.transfer(fee);
+        } else if (address(outputToken) == ETH_ADDRESS) {
             // Convert
-            bought = _tokenToEth(uniswapFactory, _fromToken, _amount, address(this));
-            bought = bought.sub(_fee);
+            bought = _tokenToEth(uniswapFactory, _inputToken, _inputAmount, address(this));
+            bought = bought.sub(fee);
 
             // Send fee and amount bought
-            _relayer.transfer(_fee);
+            relayer.transfer(fee);
             _owner.transfer(bought);
         } else {
             // Convert from fromToken to ETH
-            uint256 boughtEth = _tokenToEth(uniswapFactory, _fromToken, _amount, address(this));
-            _relayer.transfer(_fee);
+            uint256 boughtEth = _tokenToEth(uniswapFactory, _inputToken, _inputAmount, address(this));
+            relayer.transfer(fee);
 
             // Convert from ETH to toToken
-            bought = _ethToToken(uniswapFactory, _toToken, boughtEth.sub(_fee), _owner);
+            bought = _ethToToken(uniswapFactory, outputToken, boughtEth.sub(fee), _owner);
         }
 
-        require(bought >= _minReturn, "Tokens bought are not enough");
+        require(bought >= minReturn, "Tokens bought are not enough");
 
         return bought;
     }
 
     function canExecute(
-        IERC20 _fromToken,
-        IERC20 _toToken,
-        uint256 _amount,
-        uint256 _minReturn,
-        uint256 _fee,
-        bytes calldata _data
+         IERC20 _inputToken,
+        uint256 _inputAmount,
+        bytes calldata _data,
+        bytes calldata _auxData
     ) external override view returns (bool) {
+        (IERC20 outputToken, uint256 minReturn, uint256 fee, address payable relayer) = abi.decode(
+            _data,
+            (
+                IERC20,
+                uint256,
+                uint256,
+                address
+            )
+        );
         uint256 bought;
 
-        if (address(_fromToken) == ETH_ADDRESS) {
-            if (_amount <= _fee) {
+        if (address(_inputToken) == ETH_ADDRESS) {
+            if (_inputAmount <= fee) {
                 return false;
             }
 
-            uint256 sell = _amount.sub(_fee);
-            bought = uniswapFactory.getExchange(address(_toToken)).getEthToTokenInputPrice(sell);
-        } else if (address(_toToken) == ETH_ADDRESS) {
-            bought = uniswapFactory.getExchange(address(_fromToken)).getTokenToEthInputPrice(_amount);
-            if (bought <= _fee) {
+            uint256 sell = _inputAmount.sub(fee);
+            bought = uniswapFactory.getExchange(address(outputToken)).getEthToTokenInputPrice(sell);
+        } else if (address(outputToken) == ETH_ADDRESS) {
+            bought = uniswapFactory.getExchange(address(_inputToken)).getTokenToEthInputPrice(_inputAmount);
+            if (bought <= fee) {
                 return false;
             }
 
-            bought = bought.sub(_fee);
+            bought = bought.sub(fee);
         } else {
-            uint256 boughtEth = uniswapFactory.getExchange(address(_fromToken)).getTokenToEthInputPrice(_amount);
-            if (boughtEth <= _fee) {
+            uint256 boughtEth = uniswapFactory.getExchange(address(_inputToken)).getTokenToEthInputPrice(_inputAmount);
+            if (boughtEth <= fee) {
                 return false;
             }
 
-            bought = uniswapFactory.getExchange(address(_toToken)).getEthToTokenInputPrice(boughtEth.sub(_fee));
+            bought = uniswapFactory.getExchange(address(outputToken)).getEthToTokenInputPrice(boughtEth.sub(fee));
         }
 
-        return bought >= _minReturn;
+        return bought >= minReturn;
     }
 
     function _ethToToken(

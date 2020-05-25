@@ -7,22 +7,17 @@ interface IModule {
     receive() external payable;
 
     function execute(
-        IERC20 _fromToken,
-        IERC20 _toToken,
-        uint256 _amount,
-        uint256 _minReturn,
-        uint256 _fee,
+        IERC20 _inputToken,
+        uint256 _inputAmount,
         address payable _owner,
-        address payable _relayer,
-        bytes calldata _data
+        bytes calldata _data,
+        bytes calldata _auxData
     ) external returns (uint256 bought);
 
     function canExecute(
-        IERC20 _fromToken,
-        IERC20 _toToken,
-        uint256 _amount,
-        uint256 _minReturn,
-        uint256 _fee,
-        bytes calldata _data
+        IERC20 _inputToken,
+        uint256 _inputAmount,
+        bytes calldata _data,
+        bytes calldata _auxData
     ) external view returns (bool);
 }

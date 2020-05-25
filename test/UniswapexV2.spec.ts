@@ -200,7 +200,7 @@ describe("UniswapexV2", function () {
           new BN(10),                 // Pay 10 WEI to sender
           user,                       // Owner of the order
           witnesses,                  // Witnesses of the secret
-          '0x00',
+          // '0x00',
           {
             from: anotherUser,
             gasPrice: 0
@@ -290,7 +290,7 @@ describe("UniswapexV2", function () {
           new BN(15),               // Pay 15 WEI to sender
           user,                     // Owner of the order
           witnesses,                // Witnesses, sender signed using the secret
-          '0x00',
+          // '0x00',
           {
             from: anotherUser,
             gasPrice: 0
@@ -389,7 +389,7 @@ describe("UniswapexV2", function () {
           new BN(9),                // Pay 9 WEI to sender
           user,                     // Owner of the order
           witnesses,                // Signature of the sender using the secret
-          '0x00',
+          // '0x00',
           {
             from: anotherUser,
             gasPrice: 0
@@ -460,7 +460,7 @@ describe("UniswapexV2", function () {
         new BN(10),               // Pay 10 WEI to sender
         user,                     // Owner of the order
         witnesses,                // Witnesses of the secret
-        '0x00',
+        // '0x00',
         {
           from: anotherUser,
           gasPrice: 0

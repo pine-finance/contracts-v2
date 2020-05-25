@@ -277,8 +277,8 @@ contract UniswapEX is Order{
         uint256 _minReturn,
         uint256 _fee,
         address payable _owner,
-        bytes calldata _witnesses,
-        bytes calldata _data
+        bytes calldata _witnesses
+        // bytes calldata _data
     ) external {
         // Calculate witness using signature
         // avoid front-run by requiring msg.sender to know
@@ -304,13 +304,15 @@ contract UniswapEX is Order{
 
         uint256 bought = _module.execute(
             _fromToken,
-            _toToken,
             amount,
-            _minReturn,
-            _fee,
             _owner,
-            msg.sender,
-            _data
+            abi.encode(
+                _toToken,
+                _minReturn,
+                _fee,
+                msg.sender
+            ),
+            "0x00"
         );
 
         emit OrderExecuted(
@@ -334,8 +336,8 @@ contract UniswapEX is Order{
         uint256 _minReturn,
         uint256 _fee,
         address payable _owner,
-        address _witness,
-        bytes calldata _data
+        address _witness
+       // bytes calldata _data
     ) external view returns (bool) {
         bytes32 key = _keyOf(
             _module,
@@ -357,11 +359,14 @@ contract UniswapEX is Order{
 
         return _module.canExecute(
             _fromToken,
-            _toToken,
             amount,
-            _minReturn,
-            _fee,
-            _data
+            abi.encode(
+                _toToken,
+                _minReturn,
+                _fee,
+                msg.sender
+            ),
+            "0x00"
         );
     }
 
