@@ -29,15 +29,20 @@ contract LimitOrder is IModule, Order {
         bytes calldata _data,
         bytes calldata _auxData
     ) external override returns (uint256 bought) {
-        (IERC20 outputToken, uint256 minReturn, uint256 fee, address payable relayer) = abi.decode(
+        (
+            IERC20 outputToken,
+            uint256 minReturn,
+            uint256 fee
+        ) = abi.decode(
             _data,
             (
                 IERC20,
                 uint256,
-                uint256,
-                address
+                uint256
             )
         );
+
+        (address payable relayer) = abi.decode(_auxData, (address));
 
         if (address(_inputToken) == ETH_ADDRESS) {
             // Keep some eth for paying the fee
@@ -72,15 +77,15 @@ contract LimitOrder is IModule, Order {
         bytes calldata _data,
         bytes calldata _auxData
     ) external override view returns (bool) {
-        (IERC20 outputToken, uint256 minReturn, uint256 fee, address payable relayer) = abi.decode(
+        (IERC20 outputToken, uint256 minReturn, uint256 fee) = abi.decode(
             _data,
             (
                 IERC20,
                 uint256,
-                uint256,
-                address
+                uint256
             )
         );
+
         uint256 bought;
 
         if (address(_inputToken) == ETH_ADDRESS) {
@@ -118,9 +123,9 @@ contract LimitOrder is IModule, Order {
         UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
 
         if (_dest != address(this)) {
-            return uniswap.ethToTokenTransferInput.value(_amount)(1, never, _dest);
+            return uniswap.ethToTokenTransferInput{value: _amount}(1, never, _dest);
         } else {
-            return uniswap.ethToTokenSwapInput.value(_amount)(1, never);
+            return uniswap.ethToTokenSwapInput{value: _amount}(1, never);
         }
     }
 

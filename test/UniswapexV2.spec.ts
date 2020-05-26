@@ -161,12 +161,17 @@ describe("UniswapexV2", function () {
         const encodedOrder = await uniswapEx.encodeEthOrder(
           limitOrderModule.address,         // Limit orders module
           ethAddress,                       // ETH Address
-          token1.address,                   // Buy TOKEN 1
-          new BN(300),                      // Get at least 300 Tokens
-          new BN(10),                       // Pay 10 WEI to sender
           user,                             // Owner of the order
-          secret,                           // Witness secret
-          witness                           // Witness public address
+          witness,                          // Witness public address
+          web3.eth.abi.encodeParameters(
+            ['address', 'uint256', 'uint256'],
+            [
+              token1.address,               // Buy TOKEN 1
+              new BN(300),                  // Get at least 300 Tokens
+              new BN(10)                    // Pay 10 WEI to sender
+            ]
+          ),
+          secret                            // Witness secret
         )
 
         await uniswapEx.depositEth(
@@ -193,14 +198,22 @@ describe("UniswapexV2", function () {
 
         // Execute order
         const tx = await uniswapEx.executeOrder(
-          limitOrderModule.address,   // Limit orders module
-          ethAddress,                 // Sell ETH
-          token1.address,             // Buy TOKEN 1
-          new BN(300),                // Get at least 300 Tokens
-          new BN(10),                 // Pay 10 WEI to sender
-          user,                       // Owner of the order
-          witnesses,                  // Witnesses of the secret
-          // '0x00',
+          limitOrderModule.address,         // Limit orders module
+          ethAddress,                       // Sell ETH
+          user,                             // Owner of the order
+          web3.eth.abi.encodeParameters(
+            ['address', 'uint256', 'uint256'],
+            [
+              token1.address,               // Buy TOKEN 1
+              new BN(300),                  // Get at least 300 Tokens
+              new BN(10)                    // Pay 10 WEI to sender
+            ]
+          ),
+          witnesses,                        // Witnesses of the secret
+          web3.eth.abi.encodeParameters(
+            ['address'],
+            [anotherUser]
+          ),
           {
             from: anotherUser,
             gasPrice: 0
@@ -223,25 +236,35 @@ describe("UniswapexV2", function () {
 
         // Encode order transfer
         const orderTx = await uniswapEx.encodeTokenOrder(
-          limitOrderModule.address,  // Limit orders module
-          token1.address,           // Sell token 1
-          ethAddress,               // Buy ETH
-          new BN(10000),            // Tokens to sell
-          new BN(50),               // Get at least 50 ETH Wei
-          new BN(15),               // Pay 15 WEI to sender
-          user,                     // Owner of the order
-          secret,                   // Witness secret
-          witness                   // Witness address
+          limitOrderModule.address,     // Limit orders module
+          token1.address,               // Sell token 1
+          user,                         // Owner of the order
+          witness,                      // Witness address
+          web3.eth.abi.encodeParameters(
+            ['address', 'uint256', 'uint256'],
+            [
+              ethAddress,               // Buy ETH
+              new BN(50),               // Get at least 50 ETH Wei
+              new BN(15)                // Pay 15 WEI to sender
+            ]
+          ),
+          secret,                       // Witness secret
+          new BN(10000)                 // Tokens to sell
         )
 
         const vaultAddress = await uniswapEx.vaultOfOrder(
-          limitOrderModule.address, // Limit orders module
-          token1.address,           // Sell token 1
-          ethAddress,               // Buy ETH
-          new BN(50),               // Get at least 50 ETH Wei
-          new BN(15),               // Pay 15 WEI to sender
-          user,                     // Owner of the order
-          witness                   // Witness address
+          limitOrderModule.address,     // Limit orders module
+          token1.address,               // Sell token 1
+          user,                         // Owner of the order
+          witness,                      // Witness address
+          web3.eth.abi.encodeParameters(
+            ['address', 'uint256', 'uint256'],
+            [
+              ethAddress,               // Buy ETH
+              new BN(50),               // Get at least 50 ETH Wei
+              new BN(15)                // Pay 15 WEI to sender
+            ]
+          )
         )
 
         const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
@@ -283,14 +306,22 @@ describe("UniswapexV2", function () {
 
         // Execute order
         const tx = await uniswapEx.executeOrder(
-          limitOrderModule.address, // Limit orders module
-          token1.address,           // Sell token 1
-          ethAddress,               // Buy ETH
-          new BN(50),               // Get at least 50 ETH Wei
-          new BN(15),               // Pay 15 WEI to sender
-          user,                     // Owner of the order
-          witnesses,                // Witnesses, sender signed using the secret
-          // '0x00',
+          limitOrderModule.address,     // Limit orders module
+          token1.address,               // Sell token 1
+          user,                         // Owner of the order
+          web3.eth.abi.encodeParameters(
+            ['address', 'uint256', 'uint256'],
+            [
+              ethAddress,               // Buy ETH
+              new BN(50),               // Get at least 50 ETH Wei
+              new BN(15)                // Pay 15 WEI to sender
+            ]
+          ),
+          witnesses,                    // Witnesses, sender signed using the secret
+          web3.eth.abi.encodeParameters(
+            ['address'],
+            [anotherUser]
+          ),
           {
             from: anotherUser,
             gasPrice: 0
@@ -314,25 +345,35 @@ describe("UniswapexV2", function () {
 
         // Encode order transfer
         const orderTx = await uniswapEx.encodeTokenOrder(
-          limitOrderModule.address, // Limit orders module
-          token1.address,           // Sell token 1
-          token2.address,           // Buy TOKEN 2
-          new BN(1000),             // Tokens to sell
-          new BN(50),               // Get at least 50 ETH Wei
-          new BN(9),                // Pay WEI to sender
-          user,                     // Owner of the order
-          secret,                   // Witness secret
-          witness                   // Witness address
+          limitOrderModule.address,     // Limit orders module
+          token1.address,               // Sell token 1
+          user,                         // Owner of the order
+          witness,                      // Witness address
+          web3.eth.abi.encodeParameters(
+            ['address', 'uint256', 'uint256'],
+            [
+              token2.address,           // Buy TOKEN 2
+              new BN(50),               // Get at least 50 ETH Wei
+              new BN(9)                 // Pay 9 WEI to sender
+            ]
+          ),
+          secret,                       // Witness secret
+          new BN(1000)                  // Tokens to sell
         )
 
         const vaultAddress = await uniswapEx.vaultOfOrder(
-          limitOrderModule.address, // Limit orders module
-          token1.address,           // Sell token 1
-          token2.address,           // Buy ETH
-          new BN(50),               // Get at least 50 ETH Wei
-          new BN(9),                // Pay WEI to sender
-          user,                     // Owner of the order
-          witness                   // Wirness address
+          limitOrderModule.address,     // Limit orders module
+          token1.address,               // Sell token 1
+          user,                         // Owner of the order
+          witness,                      // Witness address
+          web3.eth.abi.encodeParameters(
+            ['address', 'uint256', 'uint256'],
+            [
+              token2.address,           // Buy TOKEN 2
+              new BN(50),               // Get at least 50 ETH Wei
+              new BN(9)                 // Pay 9 WEI to sender
+            ]
+          )
         )
 
         const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
@@ -382,14 +423,22 @@ describe("UniswapexV2", function () {
 
         // Execute order
         const tx = await uniswapEx.executeOrder(
-          limitOrderModule.address, // Limit orders module
-          token1.address,           // Sell token 1
-          token2.address,           // Buy ETH
-          new BN(50),               // Get at least 50 ETH Wei
-          new BN(9),                // Pay 9 WEI to sender
-          user,                     // Owner of the order
-          witnesses,                // Signature of the sender using the secret
-          // '0x00',
+          limitOrderModule.address,     // Limit orders module
+          token1.address,               // Sell token 1
+          user,                         // Owner of the order
+          web3.eth.abi.encodeParameters(
+            ['address', 'uint256', 'uint256'],
+            [
+              token2.address,           // Buy TOKEN 2
+              new BN(50),               // Get at least 50 ETH Wei
+              new BN(9)                 // Pay 9 WEI to sender
+            ]
+          ),
+          witnesses,                    // Witnesses, sender signed using the secret
+          web3.eth.abi.encodeParameters(
+            ['address'],
+            [anotherUser]
+          ),
           {
             from: anotherUser,
             gasPrice: 0
@@ -419,14 +468,19 @@ describe("UniswapexV2", function () {
 
       // Create order
       const encodedOrder = await uniswapEx.encodeEthOrder(
-        limitOrderModule.address, // Limit orders module
-        ethAddress,               // ETH Address
-        token1.address,           // Buy TOKEN 1
-        new BN(300),              // Get at least 300 Tokens
-        new BN(10),               // Pay 10 WEI to sender
-        user,                     // Owner of the order
-        secret,                   // Witness secret
-        witness                   // Witness public address
+        limitOrderModule.address,         // Limit orders module
+        ethAddress,                       // ETH Address
+        user,                             // Owner of the order
+        witness,                          // Witness public address
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300),                  // Get at least 300 Tokens
+            new BN(10)                    // Pay 10 WEI to sender
+          ]
+        ),
+        secret                   // Witness secret
       )
 
       await uniswapEx.depositEth(
@@ -453,14 +507,22 @@ describe("UniswapexV2", function () {
 
       // Execute order
       const tx = await uniswapEx.executeOrder(
-        limitOrderModule.address, // Limit orders module
-        ethAddress,               // Sell ETH
-        token1.address,           // Buy TOKEN 1
-        new BN(300),              // Get at least 300 Tokens
-        new BN(10),               // Pay 10 WEI to sender
-        user,                     // Owner of the order
-        witnesses,                // Witnesses of the secret
-        // '0x00',
+        limitOrderModule.address,         // Limit orders module
+        ethAddress,                       // Sell ETH
+        user,                             // Owner of the order
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300),                  // Get at least 300 Tokens
+            new BN(10)                    // Pay 10 WEI to sender
+          ]
+        ),
+        witnesses,                        // Witnesses of the secret
+        web3.eth.abi.encodeParameters(
+          ['address'],
+          [anotherUser]
+        ),
         {
           from: anotherUser,
           gasPrice: 0
