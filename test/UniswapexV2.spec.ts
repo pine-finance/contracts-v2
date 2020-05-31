@@ -14,6 +14,8 @@ const UniswapFactory = artifacts.require('UniswapFactory')
 const UniswapExchange = artifacts.require('UniswapExchange')
 const VaultFactory = artifacts.require('VaultFactory')
 const LimitOrderModule = artifacts.require('LimitOrder')
+const UniswapRelayer = artifacts.require('UniswapRelayer')
+
 
 function buildCreate2Address(creatorAddress, saltHex, byteCode) {
   return `0x${web3.utils
@@ -87,6 +89,7 @@ describe("UniswapexV2", function () {
   let uniswapToken1
   let uniswapToken2
   let limitOrderModule
+  let uniswapRelayer
 
   beforeEach(async function () {
 
@@ -124,7 +127,10 @@ describe("UniswapexV2", function () {
     vaultFactory = await VaultFactory.new(creationParams)
 
     // Limit Orders module
-    limitOrderModule = await LimitOrderModule.new(uniswapFactory.address, creationParams)
+    limitOrderModule = await LimitOrderModule.new(creationParams)
+
+    // Uniswap Relayer
+    uniswapRelayer = await UniswapRelayer.new(uniswapFactory.address, creationParams)
 
     // Add liquidity to Uniswap exchange 1
     await token1.setBalance(new BN(1000000000), owner)
@@ -211,8 +217,8 @@ describe("UniswapexV2", function () {
           ),
           witnesses,                        // Witnesses of the secret
           web3.eth.abi.encodeParameters(
-            ['address'],
-            [anotherUser]
+            ['address', 'address'],
+            [uniswapRelayer.address, anotherUser]
           ),
           {
             from: anotherUser,
@@ -319,8 +325,8 @@ describe("UniswapexV2", function () {
           ),
           witnesses,                    // Witnesses, sender signed using the secret
           web3.eth.abi.encodeParameters(
-            ['address'],
-            [anotherUser]
+            ['address', 'address'],
+            [uniswapRelayer.address, anotherUser]
           ),
           {
             from: anotherUser,
@@ -436,8 +442,8 @@ describe("UniswapexV2", function () {
           ),
           witnesses,                    // Witnesses, sender signed using the secret
           web3.eth.abi.encodeParameters(
-            ['address'],
-            [anotherUser]
+            ['address', 'address'],
+            [uniswapRelayer.address, anotherUser]
           ),
           {
             from: anotherUser,
@@ -520,8 +526,8 @@ describe("UniswapexV2", function () {
         ),
         witnesses,                        // Witnesses of the secret
         web3.eth.abi.encodeParameters(
-          ['address'],
-          [anotherUser]
+          ['address', 'address'],
+          [uniswapRelayer.address, anotherUser]
         ),
         {
           from: anotherUser,
