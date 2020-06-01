@@ -11,7 +11,7 @@ import "./interfaces/IERC20.sol";
 import "./commons/Order.sol";
 
 
-contract UniswapEX is Order{
+contract UniswapexV2 is Order{
     using SafeMath for uint256;
     using Fabric for bytes32;
 

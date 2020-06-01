@@ -1,6 +1,6 @@
 const should = require('chai').should()
 
-export default async function assertRevert<T>(promise: Promise<T>, message: string) {
+export default async function assertRevert<T>(promise: Promise<T>, message?: string) {
   try {
     await promise
   } catch (error) {
