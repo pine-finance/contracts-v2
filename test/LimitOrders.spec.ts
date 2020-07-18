@@ -6,7 +6,7 @@ import { sign, toAddress } from './helpers/account'
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
-const UniswapEx = artifacts.require('UniswapEX')
+const UniswapEx = artifacts.require('UniswapexV2')
 const ERC20 = artifacts.require('FakeERC20')
 const WETH9 = artifacts.require('WETH9')
 const FakeUniswapFactory = artifacts.require('FakeUniswapFactory')
