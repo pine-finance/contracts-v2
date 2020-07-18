@@ -85,7 +85,8 @@ contract LimitOrder is IModule, Order {
         uint256 _amount
     ) internal {
         if (address(_token) == ETH_ADDRESS) {
-            _to.transfer(_amount);
+            (bool success,) = _to.call{value: _amount}("");
+            require(success, "Error sending ETH to the relayer contract");
         } else {
             _token.transfer(_to, _amount);
         }
