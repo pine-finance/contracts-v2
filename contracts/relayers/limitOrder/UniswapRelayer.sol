@@ -59,19 +59,25 @@ contract UniswapRelayer is IRelayer, Order {
             uint256 sell = _inputAmount.sub(fee);
             bought = _ethToToken(version, outputToken, sell, msg.sender);
 
-            relayer.transfer(fee);
+            (bool success,) = relayer.call{value: fee}("");
+            require(success, "Error sending fees to the relayer");
         } else if (address(outputToken) == ETH_ADDRESS) {
             // Convert
             bought = _tokenToEth(version, _inputToken, _inputAmount, address(this));
             bought = bought.sub(fee);
 
             // Send fee and amount bought
-            relayer.transfer(fee);
-            msg.sender.transfer(bought);
+            // @TODO: Review if it is the best way or 1 require is better cosuming less gas
+            (bool successRelayer,) =  relayer.call{value: fee}("");
+            require(successRelayer, "Error sending fees to the relayer");
+
+            (bool successSender,) = msg.sender.call{value: bought}("");
+            require(successSender, "Error sending ETH to the order owner");
         } else {
             // Convert from fromToken to ETH
             uint256 boughtEth = _tokenToEth(version, _inputToken, _inputAmount, address(this));
-            relayer.transfer(fee);
+            (bool success,) = relayer.call{value: fee}("");
+            require(success, "Error sending fees to the relayer");
 
             // Convert from ETH to toToken
             bought = _ethToToken(version, outputToken, boughtEth.sub(fee), msg.sender);
