@@ -1,6 +1,8 @@
 import { web3 } from '@nomiclabs/buidler'
 const eutils = require('ethereumjs-util')
 
+export const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
+
 export function toAddress(pk) {
   return eutils.toChecksumAddress(eutils.bufferToHex(eutils.privateToAddress(eutils.toBuffer(pk))))
 }

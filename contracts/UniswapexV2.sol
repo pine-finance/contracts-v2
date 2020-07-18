@@ -97,7 +97,8 @@ contract UniswapexV2 is Order{
         if (address(_inputToken) == ETH_ADDRESS) {
             amount = ethDeposits[key];
             ethDeposits[key] = 0;
-            msg.sender.transfer(amount);
+            (bool success,) = msg.sender.call{value: amount}("");
+            require(success, "Error sending the Ether back");
         } else {
             amount = key.executeVault(_inputToken, msg.sender);
         }
@@ -316,7 +317,8 @@ contract UniswapexV2 is Order{
         if (address(_inputToken) == ETH_ADDRESS) {
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
-            _to.transfer(amount);
+            (bool success,) = _to.call{value: amount}("");
+            require(success, "Error pulling the order");
         } else {
             amount = _key.executeVault(_inputToken, _to);
         }

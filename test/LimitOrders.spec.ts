@@ -371,7 +371,9 @@ describe("Limit Orders Module", () => {
 
       const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
 
-      await token1.setBalance(new BN(1000), user)
+      const amount = new BN(1000)
+
+      await token1.setBalance(amount, user)
 
       // Send tokens tx
       await web3.eth.sendTransaction({
@@ -381,7 +383,7 @@ describe("Limit Orders Module", () => {
         gasPrice: 0
       })
 
-      await vaultSnap.requireIncrease(new BN(1000))
+      await vaultSnap.requireIncrease(amount)
 
       // Take balance snapshots
       const exToken1Snap = await balanceSnap(
@@ -444,9 +446,9 @@ describe("Limit Orders Module", () => {
       await exEtherSnap.requireConstant()
       await exToken1Snap.requireConstant()
       await exToken2Snap.requireConstant()
-      await vaultSnap.requireConstant()
+      await vaultSnap.requireDecrease(amount)
       await executerEtherSnap.requireIncrease(new BN(9))
-      await uniswap1TokenSnap.requireIncrease(new BN(1000))
+      await uniswap1TokenSnap.requireIncrease(amount)
       await uniswap2TokenSnap.requireDecrease(bought)
       await userToken2Snap.requireIncrease(bought)
     })
@@ -643,6 +645,8 @@ describe("Limit Orders Module", () => {
       const secret = web3.utils.randomHex(32)
       const witness = toAddress(secret)
 
+      const amount = new BN(1000)
+
       // Encode order transfer
       const orderTx = await uniswapEx.encodeTokenOrder(
         limitOrderModule.address,     // Limit orders module
@@ -658,7 +662,7 @@ describe("Limit Orders Module", () => {
           ]
         ),
         secret,                       // Witness secret
-        new BN(1000)                  // Tokens to sell
+        amount                        // Tokens to sell
       )
 
       const vaultAddress = await uniswapEx.vaultOfOrder(
@@ -678,7 +682,7 @@ describe("Limit Orders Module", () => {
 
       const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
 
-      await token1.setBalance(new BN(1000), user)
+      await token1.setBalance(amount, user)
 
       // Send tokens tx
       await web3.eth.sendTransaction({
@@ -688,7 +692,7 @@ describe("Limit Orders Module", () => {
         gasPrice: 0
       })
 
-      await vaultSnap.requireIncrease(new BN(1000))
+      await vaultSnap.requireIncrease(amount)
 
       // Take balance snapshots
       const exToken1Snap = await balanceSnap(
@@ -751,9 +755,9 @@ describe("Limit Orders Module", () => {
       await exEtherSnap.requireConstant()
       await exToken1Snap.requireConstant()
       await exToken2Snap.requireConstant()
-      await vaultSnap.requireConstant()
+      await vaultSnap.requireDecrease(amount)
       await executerEtherSnap.requireIncrease(new BN(9))
-      await uniswap1TokenSnap.requireIncrease(new BN(1000))
+      await uniswap1TokenSnap.requireIncrease(amount)
       await uniswap2TokenSnap.requireDecrease(bought)
       await userToken2Snap.requireIncrease(bought)
     })

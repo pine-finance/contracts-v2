@@ -1,7 +1,7 @@
 import { web3, artifacts } from '@nomiclabs/buidler'
 
 import assertRevert from './helpers/assertRevert'
-import { sign, toAddress } from './helpers/account'
+import { sign, toAddress, ethAddress } from './helpers/account'
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
@@ -17,9 +17,7 @@ const UniswapExchange = artifacts.require('UniswapExchange')
 const LimitOrderModule = artifacts.require('LimitOrder')
 const UniswapRelayer = artifacts.require('UniswapRelayer')
 
-describe.only("Uniswap Relayer", () => {
-  const ethAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
-
+describe("Uniswap Relayer", () => {
   const maxBn = new BN(2).pow(new BN(256)).sub(new BN(1))
 
   let owner
