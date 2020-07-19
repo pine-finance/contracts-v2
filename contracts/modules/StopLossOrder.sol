@@ -54,11 +54,13 @@ contract StopLossOrder is IModule {
         IERC20 _token,
         address _to,
         uint256 _estimatedAmount
-    ) internal returns (bool) {
-        return (
-            UniswapExUtils.transfer(_token, _to, _estimatedAmount) ||
-            UniswapExUtils.transfer(_token, _to, UniswapExUtils.balanceOf(_token, address(this)))
-        );
+    ) internal returns (bool, uint256) {
+        if (UniswapExUtils.transfer(_token, _to, _estimatedAmount)) {
+            return (true, _estimatedAmount);
+        }
+
+        uint256 fullBalance = UniswapExUtils.balanceOf(_token, address(this));
+        return (UniswapExUtils.transfer(_token, _to), fullBalance);
     }
 
     function execute(
@@ -92,24 +94,26 @@ contract StopLossOrder is IModule {
         (address handler, bytes memory auxData) = abi.decode(_auxData, (address, bytes));
 
         // Send all inputTokens to handler
-        _sendAll(_inputToken, handler, _inputAmount);
+        // Don't check if sending tokens failed, handler should check that
+        (, uint256 sent) = _sendAll(_inputToken, handler, _inputAmount);
 
-        // Call handler
-        // TODO: Check reentrancy
-        IStopLossHandler(handler).handle(
-            _inputToken,
-            order.outputToken,
-            _inputAmount,
-            minReceive,
-            auxData
-        );
+        // Call handler if required
+        if (auxData.lenght > 0) {
+            bought = IStopLossHandler(handler).handle(
+                _inputToken,
+                order.outputToken,
+                sent,
+                minReceive,
+                auxData
+            );
+        }
 
         // Require enough bough tokens
         bought = UniswapExUtils.balanceOf(order.outputToken, address(this));
         require(bought >= minReceive, "StopLossOrder#execute: BOUGHT_NOT_ENOUGH");
 
         // Send tokens to owner
-        UniswapExUtils.transfer(order.outputToken, _owner, bought);
+        require(UniswapExUtils.transfer(order.outputToken, _owner, bought), "StopLossOrder#execute: ERROR_SENDING_BOUGHT_TOKENS");
     }
 
     function canExecute(

@@ -5,14 +5,14 @@ pragma solidity ^0.6.8;
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 
 import "../../interfaces/IWETH.sol";
-import "../../interfaces/IStopLossHandler.sol";
+import "../../interfaces/IHandler.sol";
 import "../../utils/UniswapUtils.sol";
 import "../../utils/UniswapExUtils.sol";
 import "../../libs/SafeMath.sol";
 import "../../libs/SafeERC20.sol";
 
 
-contract Uniswap2Handler is IStopLossHandler {
+contract Uniswap2Handler is IHandler {
     using SafeMath for uint256;
 
     IWETH public immutable WETH;
