@@ -8,10 +8,10 @@ import "./libs/ECDSA.sol";
 import "./libs/Fabric.sol";
 import "./interfaces/IModule.sol";
 import "./interfaces/IERC20.sol";
-import "./commons/Order.sol";
+import "./utils/UniswapExUtils.sol";
 
 
-contract UniswapEX is Order{
+contract UniswapEX {
     using SafeMath for uint256;
     using Fabric for bytes32;
 
@@ -63,7 +63,7 @@ contract UniswapEX is Order{
             bytes memory data,
         ) = decodeOrder(_data);
 
-        require(inputToken == ETH_ADDRESS, "order is not from ETH");
+        require(inputToken == UniswapExUtils.ETH_ADDRESS, "order is not from ETH");
 
         bytes32 key = _keyOf(
             IModule(uint160(module)),
@@ -94,7 +94,7 @@ contract UniswapEX is Order{
         );
 
         uint256 amount;
-        if (address(_inputToken) == ETH_ADDRESS) {
+        if (address(_inputToken) == UniswapExUtils.ETH_ADDRESS) {
             amount = ethDeposits[key];
             ethDeposits[key] = 0;
             msg.sender.transfer(amount);
@@ -204,7 +204,7 @@ contract UniswapEX is Order{
            _data
         );
 
-        if (address(_inputToken) == ETH_ADDRESS) {
+        if (address(_inputToken) == UniswapExUtils.ETH_ADDRESS) {
             return ethDeposits[key] != 0;
         } else {
             return _inputToken.balanceOf(key.getVault()) != 0;
@@ -294,7 +294,7 @@ contract UniswapEX is Order{
 
         // Pull amount
         uint256 amount;
-        if (address(_inputToken) == ETH_ADDRESS) {
+        if (address(_inputToken) == UniswapExUtils.ETH_ADDRESS) {
             amount = ethDeposits[key];
         } else {
             amount = _inputToken.balanceOf(key.getVault());
@@ -313,7 +313,7 @@ contract UniswapEX is Order{
         bytes32 _key,
         address payable _to
     ) private returns (uint256 amount) {
-        if (address(_inputToken) == ETH_ADDRESS) {
+        if (address(_inputToken) == UniswapExUtils.ETH_ADDRESS) {
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
             _to.transfer(amount);

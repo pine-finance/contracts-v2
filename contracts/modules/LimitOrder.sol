@@ -5,11 +5,10 @@ pragma solidity ^0.6.8;
 import "../interfaces/IModule.sol";
 import "../interfaces/uniswapV1/UniswapExchange.sol";
 import "../interfaces/uniswapV1/UniswapFactory.sol";
-import "../commons/Order.sol";
 import "../libs/SafeMath.sol";
+import "../utils/UniswapExUtils.sol";
 
-
-contract LimitOrder is IModule, Order {
+contract LimitOrder is IModule {
     using SafeMath for uint256;
 
     uint256 private constant never = uint(-1);
@@ -44,12 +43,12 @@ contract LimitOrder is IModule, Order {
 
         (address payable relayer) = abi.decode(_auxData, (address));
 
-        if (address(_inputToken) == ETH_ADDRESS) {
+        if (address(_inputToken) == UniswapExUtils.ETH_ADDRESS) {
             // Keep some eth for paying the fee
             uint256 sell = _inputAmount.sub(fee);
             bought = _ethToToken(uniswapFactory, outputToken, sell, _owner);
             relayer.transfer(fee);
-        } else if (address(outputToken) == ETH_ADDRESS) {
+        } else if (address(outputToken) == UniswapExUtils.ETH_ADDRESS) {
             // Convert
             bought = _tokenToEth(uniswapFactory, _inputToken, _inputAmount, address(this));
             bought = bought.sub(fee);
@@ -88,14 +87,14 @@ contract LimitOrder is IModule, Order {
 
         uint256 bought;
 
-        if (address(_inputToken) == ETH_ADDRESS) {
+        if (address(_inputToken) == UniswapExUtils.ETH_ADDRESS) {
             if (_inputAmount <= fee) {
                 return false;
             }
 
             uint256 sell = _inputAmount.sub(fee);
             bought = uniswapFactory.getExchange(address(outputToken)).getEthToTokenInputPrice(sell);
-        } else if (address(outputToken) == ETH_ADDRESS) {
+        } else if (address(outputToken) == UniswapExUtils.ETH_ADDRESS) {
             bought = uniswapFactory.getExchange(address(_inputToken)).getTokenToEthInputPrice(_inputAmount);
             if (bought <= fee) {
                 return false;

@@ -6,6 +6,8 @@ import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import '@uniswap/lib/contracts/libraries/FixedPoint.sol';
 
+import '../utils/UniswapUtils.sol';
+
 
 // fixed window oracle that recomputes the average price for the entire period once every period
 // note that the price average is only guaranteed to be over at least 1 period, but may be over a longer period
@@ -35,16 +37,11 @@ contract FixedWindowOracle {
         FACTORY = _factory;
     }
 
-    // helper function that returns the current block timestamp within the range of uint32, i.e. [0, 2**32 - 1]
-    function currentBlockTimestamp() internal view returns (uint32) {
-        return uint32(block.timestamp % 2 ** 32);
-    }
-
     // produces the cumulative price using counterfactuals to save gas and avoid a call to sync.
     function currentCumulativePrices(
         address pair
     ) internal view returns (uint price0Cumulative, uint price1Cumulative, uint32 blockTimestamp) {
-        blockTimestamp = currentBlockTimestamp();
+        blockTimestamp = UniswapUtils.currentBlockTimestamp();
         price0Cumulative = IUniswapV2Pair(pair).price0CumulativeLast();
         price1Cumulative = IUniswapV2Pair(pair).price1CumulativeLast();
 
@@ -61,27 +58,9 @@ contract FixedWindowOracle {
         }
     }
 
-    // returns sorted token addresses, used to handle return values from pairs sorted in this order
-    function sortTokens(address _tokenA, address _tokenB) internal pure returns (address token0, address token1) {
-        require(_tokenA != _tokenB, 'FixedWindowOracle: IDENTICAL_ADDRESSES');
-        (token0, token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
-        require(token0 != address(0), 'FixedWindowOracle: ZERO_ADDRESS');
-    }
-
-    // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(address _tokenA, address _tokenB) internal view returns (address pair) {
-        (address token0, address token1) = sortTokens(_tokenA, _tokenB);
-        pair = address(uint(keccak256(abi.encodePacked(
-                hex'ff',
-                FACTORY,
-                keccak256(abi.encodePacked(token0, token1)),
-                hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-            ))));
-    }
-
     function _update(address _pair) internal returns (Avg memory, uint256) {
         Avg memory avg = pairAvg[_pair];
-        uint32 blockTimestamp = currentBlockTimestamp();
+        uint32 blockTimestamp = UniswapUtils.currentBlockTimestamp();
 
         if (avg.blockTimestampLast == 0) {
             {
@@ -164,7 +143,7 @@ contract FixedWindowOracle {
     }
 
     function update(address _tokenA, address _tokenB) external {
-        address pair = pairFor(_tokenA, _tokenB);
+        address pair = UniswapUtils.pairFor(FACTORY, _tokenA, _tokenB);
         _update(pair);
     }
 
@@ -179,8 +158,8 @@ contract FixedWindowOracle {
     ) {
         Avg memory avg;
 
-        (avg, delta) = _update(pairFor(_tokenIn, _tokenOut));
-        (address token0, address token1) = sortTokens(_tokenIn, _tokenOut);
+        (avg, delta) = _update(UniswapUtils.pairFor(FACTORY, _tokenIn, _tokenOut));
+        (address token0, address token1) = UniswapUtils.sortTokens(_tokenIn, _tokenOut);
 
         if (_tokenIn == token0) {
             amountOut = avg.price0Average.mul(_amountIn).decode144();
@@ -199,9 +178,9 @@ contract FixedWindowOracle {
         uint256 delta,
         uint256 amountOut
     ) {
-        Avg memory avg = pairAvg[pairFor(_tokenIn, _tokenOut)];
-        (address token0, address token1) = sortTokens(_tokenIn, _tokenOut);
-        delta = currentBlockTimestamp() - avg.blockTimestampLast; // overflow is desired
+        Avg memory avg = pairAvg[UniswapUtils.pairFor(FACTORY, _tokenIn, _tokenOut)];
+        (address token0, address token1) = UniswapUtils.sortTokens(_tokenIn, _tokenOut);
+        delta = UniswapUtils.currentBlockTimestamp() - avg.blockTimestampLast; // overflow is desired
 
         if (_tokenIn == token0) {
             amountOut = avg.price0Average.mul(_amountIn).decode144();

@@ -3,9 +3,10 @@
 pragma solidity ^0.6.8;
 
 import "../interfaces/IERC20.sol";
+import "../libs/SafeERC20.sol";
 
 
-contract Order {
+library UniswapExUtils {
     address internal constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
     function balanceOf(IERC20 _token, address _addr) internal view returns (uint256) {
@@ -20,9 +21,8 @@ contract Order {
         if (ETH_ADDRESS == address(_token)) {
             (bool success, ) = _to.call.value(_val)("");
             return success;
-        } else {
-            (bool success, bytes memory data) = address(_token).call(abi.encodeWithSelector(_token.transfer.selector, _to, _val));
-            return success && (data.length == 0 || abi.decode(data, (bool)));
         }
+
+        return SafeERC20.transfer(_token, _to, _val);
     }
 }

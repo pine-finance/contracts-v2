@@ -7,12 +7,12 @@ import "../interfaces/IModule.sol";
 import "../interfaces/IStopLossHandler.sol";
 import "../interfaces/uniswapV1/UniswapExchange.sol";
 import "../interfaces/uniswapV1/UniswapFactory.sol";
-import "../commons/Order.sol";
 import "../libs/SafeMath.sol";
 import "../commons/FixedWindowOracle.sol";
+import "../utils/UniswapExUtils.sol";
 
 
-contract StopLossOrder is IModule, Order {
+contract StopLossOrder is IModule {
     using SafeMath for uint256;
 
     uint256 private constant BASE = 1000;
@@ -56,8 +56,8 @@ contract StopLossOrder is IModule, Order {
         uint256 _estimatedAmount
     ) internal returns (bool) {
         return (
-            transfer(_token, _to, _estimatedAmount) ||
-            transfer(_token, _to, balanceOf(_token, address(this)))
+            UniswapExUtils.transfer(_token, _to, _estimatedAmount) ||
+            UniswapExUtils.transfer(_token, _to, UniswapExUtils.balanceOf(_token, address(this)))
         );
     }
 
@@ -105,11 +105,11 @@ contract StopLossOrder is IModule, Order {
         );
 
         // Require enough bough tokens
-        bought = balanceOf(order.outputToken, address(this));
+        bought = UniswapExUtils.balanceOf(order.outputToken, address(this));
         require(bought >= minReceive, "StopLossOrder#execute: BOUGHT_NOT_ENOUGH");
 
         // Send tokens to owner
-        transfer(order.outputToken, _owner, bought);
+        UniswapExUtils.transfer(order.outputToken, _owner, bought);
     }
 
     function canExecute(
