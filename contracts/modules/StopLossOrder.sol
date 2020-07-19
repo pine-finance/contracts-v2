@@ -4,7 +4,7 @@ pragma solidity ^0.6.8;
 pragma experimental ABIEncoderV2;
 
 import "../interfaces/IModule.sol";
-import "../interfaces/IStopLossHandler.sol";
+import "../interfaces/IHandler.sol";
 import "../interfaces/uniswapV1/UniswapExchange.sol";
 import "../interfaces/uniswapV1/UniswapFactory.sol";
 import "../libs/SafeMath.sol";
@@ -60,7 +60,7 @@ contract StopLossOrder is IModule {
         }
 
         uint256 fullBalance = UniswapExUtils.balanceOf(_token, address(this));
-        return (UniswapExUtils.transfer(_token, _to), fullBalance);
+        return (UniswapExUtils.transfer(_token, _to, fullBalance), fullBalance);
     }
 
     function execute(
@@ -71,12 +71,10 @@ contract StopLossOrder is IModule {
         bytes calldata _auxData
     ) external override onlyUniswapEx returns (uint256 bought) {
         StopLossData memory order = abi.decode(_data, (StopLossData));
-
-        uint256 outputAmount;
+        uint256 minReceive;
 
         { // Avoid stack too deep
-            uint256 delta;
-            (outputAmount, delta) = ORACLE.consult(
+            (uint256 outputAmount, uint256 delta) = ORACLE.consult(
                 address(_inputToken),
                 address(order.outputToken),
                 _inputAmount
@@ -85,10 +83,9 @@ contract StopLossOrder is IModule {
             // Check stop loss order limits
             require(delta <= order.maxDelta, "StopLossOrder#execute: DELTA_TOO_HIGH");
             require(outputAmount < order.maxReceive, "StopLossOrder#execute: PRICE_TOO_HIGH");
-        }
 
-        // Compute minReceive as a factor of oracle reading
-        uint256 minReceive = outputAmount.mul(order.minReceivePart) / BASE;
+            minReceive = outputAmount.mul(order.minReceivePart) / BASE;
+        }
 
         // Decode aux-data
         (address handler, bytes memory auxData) = abi.decode(_auxData, (address, bytes));
@@ -98,14 +95,16 @@ contract StopLossOrder is IModule {
         (, uint256 sent) = _tryOrSendAll(_inputToken, handler, _inputAmount);
 
         // Call handler if required
-        if (auxData.lenght > 0) {
-            bought = IStopLossHandler(handler).handle(
+        if (auxData.length > 0) {
+            bought = IHandler(handler).handle(
                 _inputToken,
                 order.outputToken,
                 sent,
                 minReceive,
                 auxData
             );
+        } else {
+            bought = UniswapExUtils.balanceOf(order.outputToken, address(this));
         }
 
         // Require enough bough tokens
@@ -122,6 +121,35 @@ contract StopLossOrder is IModule {
         bytes calldata _data,
         bytes calldata _auxData
     ) external override view returns (bool) {
+        StopLossData memory order = abi.decode(_data, (StopLossData));
+        uint256 minReceive;
 
+        { // Avoid stack too deep
+            (uint256 outputAmount, uint256 delta) = ORACLE.read(
+                address(_inputToken),
+                address(order.outputToken),
+                _inputAmount
+            );
+
+            // Check stop loss order limits
+            if (delta > order.maxDelta) return false;
+            if (outputAmount >= order.maxReceive) return false;
+
+            minReceive = outputAmount.mul(order.minReceivePart) / BASE;
+        }
+
+        // Decode aux-data
+        (address handler, bytes memory auxData) = abi.decode(_auxData, (address, bytes));
+        if (handler != address(0)) {
+            return IHandler(handler).canHandle(
+                _inputToken,
+                order.outputToken,
+                _inputAmount,
+                minReceive,
+                auxData
+            );
+        }
+
+        return true;
     }
 }

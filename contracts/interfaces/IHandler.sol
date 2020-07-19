@@ -12,7 +12,7 @@ interface IHandler {
         uint256 _amount,
         uint256 _minReturn,
         bytes calldata _data
-    ) external view returns (uint256);
+    ) external payable returns (uint256);
 
     function canHandle(
         IERC20 _fromToken,

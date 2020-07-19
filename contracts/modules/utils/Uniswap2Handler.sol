@@ -27,6 +27,27 @@ contract Uniswap2Handler is IHandler {
         require(msg.sender != tx.origin, "Uniswap2Handler#receive: REJECTED");
     }
 
+    function _estimate(address _from, address _to, uint256 _val) internal view returns (uint256 bought) {
+        // Get uniswap trading pair
+        (address token0, address token1) = UniswapUtils.sortTokens(_from, _to);
+        IUniswapV2Pair pair = IUniswapV2Pair(UniswapUtils.pairForSorted(FACTORY, token0, token1));
+
+        // Compute limit for uniswap trade
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+
+        // Optimal amounts for uniswap trade
+        uint256 reserveIn; uint256 reserveOut;
+        if (_from == token0) {
+            reserveIn = reserve0;
+            reserveOut = reserve1;
+        } else {
+            reserveIn = reserve1;
+            reserveOut = reserve0;
+        }
+
+        bought = UniswapUtils.getAmountOut(_val, reserveIn, reserveOut);
+    }
+
     function _swap(address _from, address _to, uint256 _val, address _ben) internal returns (uint256 bought) {
         // Get uniswap trading pair
         (address token0, address token1) = UniswapUtils.sortTokens(_from, _to);
@@ -35,9 +56,8 @@ contract Uniswap2Handler is IHandler {
         // Send tokens to uniswap pair
         require(SafeERC20.transfer(IERC20(_from), address(pair), _val), "Uniswap2Handler#_swap: ERROR_SENDING_TOKENS");
 
-        // Compute limit for uniswap trade
+        // Get current reserves
         (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
-        uint256 limit = uint(reserve0).mul(reserve1).mul(1000000);
 
         // Optimal amounts for uniswap trade
         {
@@ -70,7 +90,7 @@ contract Uniswap2Handler is IHandler {
         uint256,
         uint256,
         bytes calldata _data
-    ) external override {
+    ) external payable override returns (uint256) {
         address fromToken = address(_fromToken);
         address toToken = address(_toToken);
 
@@ -96,7 +116,7 @@ contract Uniswap2Handler is IHandler {
             recipient.call{ value: fee }("");
 
             // Trade
-            _swap(fromToken, toToken, amount, msg.sender);
+            return _swap(fromToken, toToken, amount, msg.sender);
         } else if (toToken == address(WETH) || toToken == UniswapExUtils.ETH_ADDRESS) {
             // Swap fromToken -> WETH
             uint256 bought = _swap(fromToken, address(WETH), amount, address(this));
@@ -112,7 +132,9 @@ contract Uniswap2Handler is IHandler {
             recipient.call{ value: fee }("");
 
             // Transfer to sender
-            UniswapExUtils.transfer(IERC20(toToken), msg.sender, bought.sub(fee));
+            bought = bought.sub(fee);
+            UniswapExUtils.transfer(IERC20(toToken), msg.sender, bought);
+            return bought;
         } else {
             // Swap fromToken -> WETH -> toToken
             //  - fromToken -> WETH
@@ -123,7 +145,34 @@ contract Uniswap2Handler is IHandler {
             recipient.call{ value: fee }("");
 
             // - WETH -> toToken
-            _swap(address(WETH), toToken, bought.sub(fee), msg.sender);
+            return _swap(address(WETH), toToken, bought.sub(fee), msg.sender);
+        }
+    }
+
+    function canHandle(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _amount,
+        uint256 _minReturn,
+        bytes calldata _data
+    ) external override view returns (bool) {
+        address fromToken = address(_fromToken);
+        address toToken = address(_toToken);
+
+        // Decode extra data
+        (, uint256 fee) = abi.decode(_data, (address, uint256));
+
+        if (fromToken == address(WETH) || fromToken == UniswapExUtils.ETH_ADDRESS) {
+            if (_amount < fee) return false;
+            return _estimate(address(WETH), toToken, _amount - fee) >= _minReturn;
+        } else if (toToken == address(WETH) || toToken == UniswapExUtils.ETH_ADDRESS) {
+            uint256 bought = _estimate(fromToken, address(WETH), _amount);
+            if (bought < fee) return false;
+            return bought - fee >= _minReturn;
+        } else {
+            uint256 bought = _estimate(fromToken, address(WETH), _amount);
+            if (bought < fee) return false;
+            return _estimate(address(WETH), toToken, bought - fee) >= _minReturn;
         }
     }
 }
