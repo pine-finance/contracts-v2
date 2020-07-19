@@ -50,7 +50,7 @@ contract StopLossOrder is IModule {
         @notice Tries to send an amount of tokens or ETH, if the transfer fails
             it tries to send the current balance of the contract
     */
-    function _sendAll(
+    function _tryOrSendAll(
         IERC20 _token,
         address _to,
         uint256 _estimatedAmount
@@ -95,7 +95,7 @@ contract StopLossOrder is IModule {
 
         // Send all inputTokens to handler
         // Don't check if sending tokens failed, handler should check that
-        (, uint256 sent) = _sendAll(_inputToken, handler, _inputAmount);
+        (, uint256 sent) = _tryOrSendAll(_inputToken, handler, _inputAmount);
 
         // Call handler if required
         if (auxData.lenght > 0) {
@@ -109,11 +109,11 @@ contract StopLossOrder is IModule {
         }
 
         // Require enough bough tokens
-        bought = UniswapExUtils.balanceOf(order.outputToken, address(this));
+        // and send tokens to the owner
+        bool success;
+        (success, bought) = _tryOrSendAll(order.outputToken, _owner, bought);
+        require(success, "StopLossOrder#execute: ERROR_SENDING_BOUGHT_TOKENS");
         require(bought >= minReceive, "StopLossOrder#execute: BOUGHT_NOT_ENOUGH");
-
-        // Send tokens to owner
-        require(UniswapExUtils.transfer(order.outputToken, _owner, bought), "StopLossOrder#execute: ERROR_SENDING_BOUGHT_TOKENS");
     }
 
     function canExecute(
