@@ -3,22 +3,23 @@ pragma solidity ^0.6.8;
 
 import "../interfaces/IERC20.sol";
 
-interface IRelayer {
+interface IHandler {
 
     receive() external payable;
 
-    function execute(
+    function handle(
         IERC20 _inputToken,
+        IERC20 _outputToken,
         uint256 _inputAmount,
-        address payable _owner,
-        bytes calldata _data,
-        bytes calldata _auxData
+        uint256 _minReturn,
+        bytes calldata _data
     ) external payable returns (uint256 bought);
 
-    function canExecute(
+    function canHandle(
         IERC20 _inputToken,
+        IERC20 _outputToken,
         uint256 _inputAmount,
-        bytes calldata _data,
-        bytes calldata _auxData
+        uint256 _minReturn,
+        bytes calldata _data
     ) external view returns (bool);
 }

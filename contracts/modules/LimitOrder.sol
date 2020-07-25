@@ -3,7 +3,7 @@
 pragma solidity ^0.6.8;
 
 import "../interfaces/IModule.sol";
-import "../interfaces/IRelayer.sol";
+import "../interfaces/IHandler.sol";
 import "../commons/Order.sol";
 import "../libs/SafeMath.sol";
 
@@ -33,15 +33,15 @@ contract LimitOrder is IModule, Order {
 
         uint256 prevBalance = _getBalance(outputToken);
 
-        (IRelayer relayerExecutor) = abi.decode(_auxData, (IRelayer));
+        (IHandler handler) = abi.decode(_auxData, (IHandler));
 
-        _transferAmount(_inputToken, address(relayerExecutor), _inputAmount);
+        _transferAmount(_inputToken, address(handler), _inputAmount);
 
-        relayerExecutor.execute(
+        handler.handle(
             _inputToken,
+            outputToken,
             _inputAmount,
-            _owner,
-            _data,
+            minReturn,
             _auxData
         );
 
@@ -61,12 +61,23 @@ contract LimitOrder is IModule, Order {
         bytes calldata _data,
         bytes calldata _auxData
     ) external override view returns (bool) {
-        (IRelayer relayerExecutor) = abi.decode(_auxData, (IRelayer));
-
-        return relayerExecutor.canExecute(
-            _inputToken,
-            _inputAmount,
+         (
+            IERC20 outputToken,
+            uint256 minReturn
+        ) = abi.decode(
             _data,
+            (
+                IERC20,
+                uint256
+            )
+        );
+        (IHandler handler) = abi.decode(_auxData, (IHandler));
+
+        return handler.canHandle(
+            _inputToken,
+            outputToken,
+            _inputAmount,
+            minReturn,
             _auxData
         );
     }

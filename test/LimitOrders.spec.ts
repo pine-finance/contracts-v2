@@ -15,7 +15,9 @@ const UniswapV2Factory = artifacts.require('UniswapV2Factory')
 const UniswapV2Router01 = artifacts.require('UniswapV2Router01')
 const UniswapExchange = artifacts.require('UniswapExchange')
 const LimitOrderModule = artifacts.require('LimitOrder')
-const UniswapRelayer = artifacts.require('UniswapRelayer')
+const UniswapV2Handler = artifacts.require('UniswapV2Handler')
+const UniswapV1Handler = artifacts.require('UniswapV1Handler')
+
 
 describe("Limit Orders Module", () => {
   const ethAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
@@ -48,7 +50,8 @@ describe("Limit Orders Module", () => {
   let uniswapToken1V2
   let uniswapToken2V2
   let limitOrderModule
-  let uniswapRelayer
+  let uniswapV2Handler
+  let uniswapV1Handler
 
   beforeEach(async () => {
 
@@ -90,7 +93,9 @@ describe("Limit Orders Module", () => {
     limitOrderModule = await LimitOrderModule.new(creationParams)
 
     // Uniswap Relayer
-    uniswapRelayer = await UniswapRelayer.new(uniswapV1Factory.address, uniswapV2Router.address, creationParams)
+    uniswapV2Handler = await UniswapV2Handler.new(uniswapV2Factory.address, weth.address, creationParams)
+    uniswapV1Handler = await UniswapV1Handler.new(uniswapV1Factory.address, creationParams)
+
 
     await token1.setBalance(new BN(2000000000), owner)
     await token2.setBalance(new BN(2000000000), owner)
@@ -204,8 +209,8 @@ describe("Limit Orders Module", () => {
         ),
         witnesses,                        // Witnesses of the secret
         web3.eth.abi.encodeParameters(
-          ['address', 'address', 'uint8'],
-          [uniswapRelayer.address, anotherUser, 1]
+          ['address', 'address', 'uint256'],
+          [uniswapV1Handler.address, anotherUser, new BN(10)]
         ),
         {
           from: anotherUser,
@@ -312,8 +317,8 @@ describe("Limit Orders Module", () => {
         ),
         witnesses,                    // Witnesses, sender signed using the secret
         web3.eth.abi.encodeParameters(
-          ['address', 'address', 'uint8'],
-          [uniswapRelayer.address, anotherUser, 1]
+          ['address', 'address', 'uint256'],
+          [uniswapV1Handler.address, anotherUser, new BN(15)]
         ),
         {
           from: anotherUser,
@@ -431,8 +436,8 @@ describe("Limit Orders Module", () => {
         ),
         witnesses,                    // Witnesses, sender signed using the secret
         web3.eth.abi.encodeParameters(
-          ['address', 'address', 'uint8'],
-          [uniswapRelayer.address, anotherUser, 1]
+          ['address', 'address', 'uint256'],
+          [uniswapV1Handler.address, anotherUser, new BN(9)]
         ),
         {
           from: anotherUser,
@@ -513,8 +518,8 @@ describe("Limit Orders Module", () => {
         ),
         witnesses,                        // Witnesses of the secret
         web3.eth.abi.encodeParameters(
-          ['address', 'address', 'uint8'],
-          [uniswapRelayer.address, anotherUser, 2]
+          ['address', 'address', 'uint256'],
+          [uniswapV2Handler.address, anotherUser, new BN(10)]
         ),
         {
           from: anotherUser,
@@ -621,8 +626,8 @@ describe("Limit Orders Module", () => {
         ),
         witnesses,                    // Witnesses, sender signed using the secret
         web3.eth.abi.encodeParameters(
-          ['address', 'address', 'uint8'],
-          [uniswapRelayer.address, anotherUser, 2]
+          ['address', 'address', 'uint256'],
+          [uniswapV2Handler.address, anotherUser, new BN(15)]
         ),
         {
           from: anotherUser,
@@ -740,8 +745,8 @@ describe("Limit Orders Module", () => {
         ),
         witnesses,                    // Witnesses, sender signed using the secret
         web3.eth.abi.encodeParameters(
-          ['address', 'address', 'uint8'],
-          [uniswapRelayer.address, anotherUser, 2]
+          ['address', 'address', 'uint256'],
+          [uniswapV2Handler.address, anotherUser, new BN(9)]
         ),
         {
           from: anotherUser,
@@ -824,8 +829,8 @@ describe("Limit Orders Module", () => {
         ),
         witnesses,                        // Witnesses of the secret
         web3.eth.abi.encodeParameters(
-          ['address', 'address', 'uint8'],
-          [uniswapRelayer.address, anotherUser, 1]
+          ['address', 'address', 'uint256'],
+          [uniswapV1Handler.address, anotherUser, new BN(10)]
         ),
         {
           from: anotherUser,
