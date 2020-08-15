@@ -162,11 +162,10 @@ describe("Limit Orders Module", () => {
         user,                             // Owner of the order
         witness,                          // Witness public address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token1.address,               // Buy TOKEN 1
-            new BN(300),                  // Get at least 300 Tokens
-            new BN(10)                    // Pay 10 WEI to sender
+            new BN(300)                  // Get at least 300 Tokens
           ]
         ),
         secret                            // Witness secret
@@ -200,11 +199,10 @@ describe("Limit Orders Module", () => {
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token1.address,               // Buy TOKEN 1
-            new BN(300),                  // Get at least 300 Tokens
-            new BN(10)                    // Pay 10 WEI to sender
+            new BN(300)                  // Get at least 300 Tokens
           ]
         ),
         witnesses,                        // Witnesses of the secret
@@ -239,11 +237,10 @@ describe("Limit Orders Module", () => {
         user,                         // Owner of the order
         witness,                      // Witness address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             ethAddress,               // Buy ETH
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(15)                // Pay 15 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
         secret,                       // Witness secret
@@ -256,11 +253,10 @@ describe("Limit Orders Module", () => {
         user,                         // Owner of the order
         witness,                      // Witness address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             ethAddress,               // Buy ETH
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(15)                // Pay 15 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         )
       )
@@ -308,11 +304,10 @@ describe("Limit Orders Module", () => {
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             ethAddress,               // Buy ETH
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(15)                // Pay 15 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
         witnesses,                    // Witnesses, sender signed using the secret
@@ -348,11 +343,10 @@ describe("Limit Orders Module", () => {
         user,                         // Owner of the order
         witness,                      // Witness address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token2.address,           // Buy TOKEN 2
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(9)                 // Pay 9 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
         secret,                       // Witness secret
@@ -365,11 +359,10 @@ describe("Limit Orders Module", () => {
         user,                         // Owner of the order
         witness,                      // Witness address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token2.address,           // Buy TOKEN 2
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(9)                 // Pay 9 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         )
       )
@@ -427,11 +420,10 @@ describe("Limit Orders Module", () => {
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token2.address,           // Buy TOKEN 2
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(9)                 // Pay 9 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
         witnesses,                    // Witnesses, sender signed using the secret
@@ -471,11 +463,10 @@ describe("Limit Orders Module", () => {
         user,                             // Owner of the order
         witness,                          // Witness public address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token1.address,               // Buy TOKEN 1
-            new BN(300),                  // Get at least 300 Tokens
-            new BN(10)                    // Pay 10 WEI to sender
+            new BN(300)                  // Get at least 300 Tokens
           ]
         ),
         secret                            // Witness secret
@@ -509,11 +500,10 @@ describe("Limit Orders Module", () => {
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token1.address,               // Buy TOKEN 1
-            new BN(300),                  // Get at least 300 Tokens
-            new BN(10)                    // Pay 10 WEI to sender
+            new BN(300)                  // Get at least 300 Tokens
           ]
         ),
         witnesses,                        // Witnesses of the secret
@@ -548,11 +538,10 @@ describe("Limit Orders Module", () => {
         user,                         // Owner of the order
         witness,                      // Witness address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             ethAddress,               // Buy ETH
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(15)                // Pay 15 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
         secret,                       // Witness secret
@@ -565,11 +554,10 @@ describe("Limit Orders Module", () => {
         user,                         // Owner of the order
         witness,                      // Witness address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             ethAddress,               // Buy ETH
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(15)                // Pay 15 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         )
       )
@@ -617,11 +605,10 @@ describe("Limit Orders Module", () => {
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             ethAddress,               // Buy ETH
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(15)                // Pay 15 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
         witnesses,                    // Witnesses, sender signed using the secret
@@ -659,11 +646,10 @@ describe("Limit Orders Module", () => {
         user,                         // Owner of the order
         witness,                      // Witness address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token2.address,           // Buy TOKEN 2
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(9)                 // Pay 9 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
         secret,                       // Witness secret
@@ -676,11 +662,10 @@ describe("Limit Orders Module", () => {
         user,                         // Owner of the order
         witness,                      // Witness address
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token2.address,           // Buy TOKEN 2
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(9)                 // Pay 9 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         )
       )
@@ -736,11 +721,10 @@ describe("Limit Orders Module", () => {
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
+          ['address', 'uint256'],
           [
             token2.address,           // Buy TOKEN 2
-            new BN(50),               // Get at least 50 ETH Wei
-            new BN(9)                 // Pay 9 WEI to sender
+            new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
         witnesses,                    // Witnesses, sender signed using the secret

@@ -66,7 +66,7 @@ contract UniswapexV2 is Order{
 
         require(inputToken == ETH_ADDRESS, "UniswapexV2#depositEth: WRONG_INPUT_TOKEN");
 
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             IModule(uint160(module)),
             IERC20(inputToken),
             owner,
@@ -86,7 +86,7 @@ contract UniswapexV2 is Order{
         bytes calldata _data
     ) external {
         require(msg.sender == _owner, "UniswapexV2#cancelOrder: INVALID_OWNER");
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             _module,
             _inputToken,
             _owner,
@@ -134,6 +134,7 @@ contract UniswapexV2 is Order{
             ),
             _amount,
             abi.encode(
+                _module,
                 _inputToken,
                 _owner,
                 _witness,
@@ -198,7 +199,7 @@ contract UniswapexV2 is Order{
         address _witness,
         bytes calldata _data
     ) external view returns (bool) {
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             _module,
             _inputToken,
             _owner,
@@ -220,7 +221,7 @@ contract UniswapexV2 is Order{
         address _witness,
         bytes memory _data
     ) public view returns (address) {
-        return _keyOf(
+        return keyOf(
             _module,
             _inputToken,
             _owner,
@@ -246,7 +247,7 @@ contract UniswapexV2 is Order{
             _witnesses
         );
 
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             _module,
             _inputToken,
             _owner,
@@ -286,7 +287,7 @@ contract UniswapexV2 is Order{
         bytes calldata _data,
         bytes calldata _auxData
     ) external view returns (bool) {
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             _module,
             _inputToken,
             _owner,
@@ -325,13 +326,13 @@ contract UniswapexV2 is Order{
         }
     }
 
-    function _keyOf(
+    function keyOf(
         IModule _module,
         IERC20 _inputToken,
         address payable _owner,
         address _witness,
         bytes memory _data
-    ) private pure returns (bytes32) {
+    ) public pure returns (bytes32) {
         return keccak256(
             abi.encode(
                 _module,
