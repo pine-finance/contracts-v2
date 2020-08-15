@@ -31,8 +31,6 @@ contract LimitOrder is IModule, Order {
             )
         );
 
-        uint256 prevBalance = _getBalance(outputToken);
-
         (IHandler handler) = abi.decode(_auxData, (IHandler));
 
         _transferAmount(_inputToken, address(handler), _inputAmount);
@@ -45,10 +43,8 @@ contract LimitOrder is IModule, Order {
             _auxData
         );
 
-        uint256 afterBalance = _getBalance(outputToken);
-        bought = afterBalance.sub(prevBalance);
-
-        require(bought >= minReturn, "Tokens bought are not enough");
+        bought = _getBalance(outputToken);
+        require(bought >= minReturn, "LimitOrder::Tokens bought are not enough");
 
         _transferAmount(outputToken, _owner, bought);
 
@@ -97,7 +93,7 @@ contract LimitOrder is IModule, Order {
     ) internal {
         if (address(_token) == ETH_ADDRESS) {
             (bool success,) = _to.call{value: _amount}("");
-            require(success, "Error sending ETH to the relayer contract");
+            require(success, "LimitOrder::Error sending ETH to the handler contract");
         } else {
             _token.transfer(_to, _amount);
         }

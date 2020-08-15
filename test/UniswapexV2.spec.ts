@@ -398,7 +398,7 @@ describe("UniswapexV2", function () {
         witness,                      // witness
         data,                         // data
         fromOwner
-      ), 'Only the owner of the order can cancel it')
+      ), 'UniswapexV2#cancelOrder: INVALID_OWNER')
     })
   })
 

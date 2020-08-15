@@ -47,14 +47,15 @@ contract UniswapexV2 is Order{
     receive() external payable {
         require(
             msg.sender != tx.origin,
-            "Prevent sending ETH directly to the contract"
+            "UniswapexV2#receive: NO_SEND_ETH_PLEASE"
         );
     }
 
     function depositEth(
         bytes calldata _data
     ) external payable {
-        require(msg.value > 0, "No value provided");
+        require(msg.value > 0, "UniswapexV2#depositEth: VALUE_IS_0");
+
         (
             address module,
             address inputToken,
@@ -63,7 +64,7 @@ contract UniswapexV2 is Order{
             bytes memory data,
         ) = decodeOrder(_data);
 
-        require(inputToken == ETH_ADDRESS, "order is not from ETH");
+        require(inputToken == ETH_ADDRESS, "UniswapexV2#depositEth: WRONG_INPUT_TOKEN");
 
         bytes32 key = _keyOf(
             IModule(uint160(module)),
@@ -84,7 +85,7 @@ contract UniswapexV2 is Order{
         address _witness,
         bytes calldata _data
     ) external {
-        require(msg.sender == _owner, "Only the owner of the order can cancel it");
+        require(msg.sender == _owner, "UniswapexV2#cancelOrder: INVALID_OWNER");
         bytes32 key = _keyOf(
             _module,
             _inputToken,
@@ -98,7 +99,7 @@ contract UniswapexV2 is Order{
             amount = ethDeposits[key];
             ethDeposits[key] = 0;
             (bool success,) = msg.sender.call{value: amount}("");
-            require(success, "Error sending the Ether back");
+            require(success, "UniswapexV2#cancelOrder: ETHER_TRANSFER_FAILED");
         } else {
             amount = key.executeVault(_inputToken, msg.sender);
         }
@@ -255,7 +256,7 @@ contract UniswapexV2 is Order{
 
         // Pull amount
         uint256 amount = _pullOrder(_inputToken, key, address(_module));
-        require(amount > 0, "The order does not exists");
+        require(amount > 0, "UniswapexV2#executeOrder: INVALID_ORDER");
 
         uint256 bought = _module.execute(
             _inputToken,
@@ -318,7 +319,7 @@ contract UniswapexV2 is Order{
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
             (bool success,) = _to.call{value: amount}("");
-            require(success, "Error pulling the order");
+            require(success, "UniswapexV2#_pullOrder: PULL_ETHER_FAILED");
         } else {
             amount = _key.executeVault(_inputToken, _to);
         }

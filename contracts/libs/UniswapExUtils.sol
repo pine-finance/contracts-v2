@@ -6,7 +6,7 @@ import "../interfaces/IERC20.sol";
 import "../libs/SafeERC20.sol";
 
 
-library UniswapExUtils {
+library UniswapexUtils {
     address internal constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
     function balanceOf(IERC20 _token, address _addr) internal view returns (uint256) {
@@ -19,7 +19,7 @@ library UniswapExUtils {
 
     function transfer(IERC20 _token, address _to, uint256 _val) internal returns (bool) {
         if (ETH_ADDRESS == address(_token)) {
-            (bool success, ) = _to.call.value(_val)("");
+            (bool success, ) = _to.call{value:_val}("");
             return success;
         }
 

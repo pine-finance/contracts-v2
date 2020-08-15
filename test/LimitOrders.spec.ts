@@ -337,7 +337,7 @@ describe("Limit Orders Module", () => {
       await userTokenSnap.requireIncrease(bought)
     })
 
-    it('Should exchange tokens for tokens', async () => {
+    it('Should execute tokens for tokens', async () => {
       const secret = web3.utils.randomHex(32)
       const witness = toAddress(secret)
 
@@ -646,7 +646,7 @@ describe("Limit Orders Module", () => {
       await userTokenSnap.requireIncrease(bought)
     })
 
-    it('Should exchange tokens for tokens', async () => {
+    it('Should execute tokens for tokens', async () => {
       const secret = web3.utils.randomHex(32)
       const witness = toAddress(secret)
 

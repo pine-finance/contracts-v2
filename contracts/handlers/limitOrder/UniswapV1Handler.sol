@@ -24,14 +24,14 @@ contract UniswapV1Handler is IHandler, Order {
     }
 
     receive() external override payable {
-        require(msg.sender != tx.origin, "Uniswap2Handler#receive: REJECTED");
+        require(msg.sender != tx.origin, "UniswapV1Handler#receive: NO_SEND_ETH_PLEASE");
     }
 
     function handle(
         IERC20 _inputToken,
         IERC20 _outputToken,
         uint256 _inputAmount,
-        uint256 _minReturn,
+        uint256,
         bytes calldata _data
     ) external payable override returns (uint256 bought) {
         (,address payable relayer, uint256 fee) = abi.decode(_data, (address, address, uint256));
@@ -40,30 +40,25 @@ contract UniswapV1Handler is IHandler, Order {
             // Keep some eth for paying the fee
             uint256 sell = _inputAmount.sub(fee);
             bought = _ethToToken(uniswapFactory, _outputToken, sell, msg.sender);
-
-            (bool success,) = relayer.call{value: fee}("");
-            require(success, "Error sending fees to the relayer");
         } else if (address(_outputToken) == ETH_ADDRESS) {
             // Convert
             bought = _tokenToEth(uniswapFactory, _inputToken, _inputAmount);
             bought = bought.sub(fee);
 
-            // Send fee and amount bought
-            // @TODO: Review if it is the best way or 1 require is better cosuming less gas
-            (bool successRelayer,) =  relayer.call{value: fee}("");
-            require(successRelayer, "Error sending fees to the relayer");
-
+            // Send amount bought
             (bool successSender,) = msg.sender.call{value: bought}("");
-            require(successSender, "Error sending ETH to the order owner");
+            require(successSender, "UniswapV1Handler#handle: TRANSFER_ETH_TO_CALLER_FAILED");
         } else {
             // Convert from fromToken to ETH
             uint256 boughtEth = _tokenToEth(uniswapFactory, _inputToken, _inputAmount);
-            (bool success,) = relayer.call{value: fee}("");
-            require(success, "Error sending fees to the relayer");
 
             // Convert from ETH to toToken
             bought = _ethToToken(uniswapFactory, _outputToken, boughtEth.sub(fee), msg.sender);
         }
+
+        // Send fee to relayer
+        (bool successRelayer,) = relayer.call{value: fee}("");
+        require(successRelayer, "UniswapV1Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
     }
 
     function canHandle(
@@ -121,7 +116,7 @@ contract UniswapV1Handler is IHandler, Order {
         uint256 _amount
     ) private returns (uint256) {
         UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
-        require(address(uniswap) != address(0), "The exchange should exist");
+        require(address(uniswap) != address(0), "UniswapV1Handler#_tokenToEth: EXCHANGE_DOES_NOT_EXIST");
 
         // Check if previous allowance is enough and approve Uniswap if not
         uint256 prevAllowance = _token.allowance(address(this), address(uniswap));
