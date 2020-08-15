@@ -2,13 +2,13 @@
 
 pragma solidity ^0.6.8;
 
-import "../../interfaces/IWETH.sol";
-import "../../interfaces/IHandler.sol";
-import "../../interfaces/uniswapV2/IUniswapV2Pair.sol";
-import "../../libs/UniswapUtils.sol";
-import "../../libs/UniswapexUtils.sol";
-import "../../libs/SafeMath.sol";
-import "../../libs/SafeERC20.sol";
+import "../interfaces/IWETH.sol";
+import "../interfaces/IHandler.sol";
+import "../interfaces/uniswapV2/IUniswapV2Pair.sol";
+import "../libs/UniswapUtils.sol";
+import "../libs/UniswapexUtils.sol";
+import "../libs/SafeMath.sol";
+import "../libs/SafeERC20.sol";
 
 
 contract UniswapV2Handler is IHandler {

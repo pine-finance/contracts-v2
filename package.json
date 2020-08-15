@@ -41,6 +41,7 @@
     "ethereumjs-util": "^7.0.1",
     "husky": "^4.2.5",
     "solhint": "^3.0.0",
+    "truffle-flattener": "^1.4.4",
     "ts-node": "^8.10.1",
     "tslint": "^6.1.2",
     "typechain": "^2.0.0",

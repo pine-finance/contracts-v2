@@ -2,13 +2,13 @@
 
 pragma solidity ^0.6.8;
 
-import "../../libs/SafeMath.sol";
-import "../../commons/Order.sol";
-import "../../interfaces/IERC20.sol";
-import "../../interfaces/IHandler.sol";
-import "../../interfaces/uniswapV1/UniswapExchange.sol";
-import "../../interfaces/uniswapV1/UniswapFactory.sol";
-import "../../interfaces/uniswapV2/IUniswapV2Router.sol";
+import "../libs/SafeMath.sol";
+import "../commons/Order.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/IHandler.sol";
+import "../interfaces/uniswapV1/UniswapExchange.sol";
+import "../interfaces/uniswapV1/UniswapFactory.sol";
+import "../interfaces/uniswapV2/IUniswapV2Router.sol";
 
 
 contract UniswapV1Handler is IHandler, Order {
