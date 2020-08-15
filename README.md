@@ -4,7 +4,7 @@
 
 ### Rinkeby
 
-- [UniswapexV2](https://rinkeby.etherscan.io/address/0x87899d863cd300b493f83b51a1f9ec23c13bc5c1#code)
+- [UniswapexV2](https://rinkeby.etherscan.io/address/0xb6548416b3db631e5351fa8ab227f85608050fdb#code)
 
 - [LimitOrdersModule](https://rinkeby.etherscan.io/address/0xef6c6b0bce4d2060efab0d16736c6ce7473deddc#code)
 
