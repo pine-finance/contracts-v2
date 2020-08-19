@@ -114,6 +114,39 @@ contract UniswapV2Handler is IHandler {
         }
     }
 
+    /**
+    * @dev Simulate and return bought amount
+    */
+    function simulate(
+        IERC20 _fromToken,
+        IERC20 _toToken,
+        uint256 _amount,
+        uint256 _minReturn,
+        bytes calldata _data
+    ) external view returns (bool, uint256) {
+        address fromToken = address(_fromToken);
+        address toToken = address(_toToken);
+
+        // Decode extra data
+        (,, uint256 fee) = abi.decode(_data, (address, address, uint256));
+
+        uint256 bought;
+
+        if (fromToken == address(WETH) || fromToken == UniswapexUtils.ETH_ADDRESS) {
+            if (_amount < fee) return (false, 0);
+            bought = _estimate(address(WETH), toToken, _amount.sub(fee));
+        } else if (toToken == address(WETH) || toToken == UniswapexUtils.ETH_ADDRESS) {
+            uint256 bought = _estimate(fromToken, address(WETH), _amount);
+            if (bought < fee) return (false, 0);
+            bought = bought.sub(fee);
+        } else {
+            uint256 bought = _estimate(fromToken, address(WETH), _amount);
+            if (bought < fee) return (false, 0);
+            bought = _estimate(address(WETH), toToken, bought.sub(fee));
+        }
+        return (bought >= _minReturn, bought);
+    }
+
     receive() external override payable {
         require(msg.sender != tx.origin, "UniswapV2Handler#receive: NO_SEND_ETH_PLEASE");
     }

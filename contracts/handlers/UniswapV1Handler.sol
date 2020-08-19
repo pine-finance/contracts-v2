@@ -99,6 +99,46 @@ contract UniswapV1Handler is IHandler, Order {
         return bought >= _minReturn;
     }
 
+    /**
+    * @dev Simulate and return bought amount
+    */
+    function simulate(IERC20 _inputToken,
+        IERC20 _outputToken,
+        uint256 _inputAmount,
+        uint256 _minReturn,
+        bytes calldata _data
+    ) external view returns (bool, uint256) {
+        (,,uint256 fee) = abi.decode(_data, (address, address, uint256));
+
+        uint256 bought;
+
+        if (address(_inputToken) == ETH_ADDRESS) {
+            if (_inputAmount <= fee) {
+                return (false, 0);
+            }
+
+            uint256 sell = _inputAmount.sub(fee);
+            bought = _outEthToToken(uniswapFactory, _outputToken, sell);
+        } else if (address(_outputToken) == ETH_ADDRESS) {
+            bought = _outTokenToEth(uniswapFactory ,_inputToken, _inputAmount);
+
+            if (bought <= fee) {
+                return (false, 0);
+            }
+
+            bought = bought.sub(fee);
+        } else {
+            uint256 boughtEth =  _outTokenToEth(uniswapFactory, _inputToken, _inputAmount);
+            if (boughtEth <= fee) {
+                return (false, 0);
+            }
+
+            bought = _outEthToToken(uniswapFactory, _outputToken, boughtEth.sub(fee));
+        }
+
+        return (bought >= _minReturn, bought);
+    }
+
     function _ethToToken(
         UniswapFactory _uniswapFactory,
         IERC20 _token,
