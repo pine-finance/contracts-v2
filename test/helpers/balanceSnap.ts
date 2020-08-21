@@ -8,7 +8,7 @@ const expect = require('chai')
   .expect
 
 export async function balanceSnap(token: any, address: string, account: string = "") {
-  const snapBalance = await token.balanceOf(address)
+  let snapBalance = await token.balanceOf(address)
   return {
     requireConstant: async function () {
       expect(
@@ -20,21 +20,27 @@ export async function balanceSnap(token: any, address: string, account: string =
     },
     requireIncrease: async function (delta) {
       const realincrease = (await token.balanceOf(address)).sub(snapBalance)
+      const expectedBalance = snapBalance.add(delta)
       expect(
         snapBalance.add(delta),
         `${account} should increase by ${delta} - but increased by ${realincrease}`
       ).to.eq.BN(
         await token.balanceOf(address)
       )
+      // Update balance
+      snapBalance = expectedBalance
     },
     requireDecrease: async function (delta) {
       const realdecrease = snapBalance.sub(await token.balanceOf(address))
+      const expectedBalance = snapBalance.sub(delta)
       expect(
         snapBalance.sub(delta),
         `${account} should decrease by ${delta} - but decreased by ${realdecrease}`
       ).to.eq.BN(
         await token.balanceOf(address)
       )
+      // Update balance
+      snapBalance = expectedBalance
     },
     restore: async function () {
       await token.setBalance(snapBalance, address)
@@ -43,7 +49,7 @@ export async function balanceSnap(token: any, address: string, account: string =
 }
 
 export async function etherSnap(address: string, account: string = "") {
-  const snapBalance = new BN(await web3.eth.getBalance(address))
+  let snapBalance = new BN(await web3.eth.getBalance(address))
   return {
     requireConstant: async function () {
       expect(
@@ -55,21 +61,27 @@ export async function etherSnap(address: string, account: string = "") {
     },
     requireIncrease: async function (delta) {
       const realincrease = new BN(await web3.eth.getBalance(address)).sub(snapBalance)
+      const expectedBalance = snapBalance.add(delta)
       expect(
-        snapBalance.add(delta),
+        expectedBalance,
         `${account} should increase by ${delta} - but increased by ${realincrease}`
       ).to.eq.BN(
         new BN(await web3.eth.getBalance(address))
       )
+      // Update balance
+      snapBalance = expectedBalance
     },
     requireDecrease: async function (delta) {
       const realdecrease = snapBalance.sub(new BN(await web3.eth.getBalance(address)))
+      const expectedBalance = snapBalance.sub(delta)
       expect(
         snapBalance.sub(delta),
         `${account} should decrease by ${delta} - but decreased by ${realdecrease}`
       ).to.eq.BN(
         new BN(await web3.eth.getBalance(address))
       )
+      // Update balance
+      snapBalance = expectedBalance
     }
   }
 }

@@ -11,7 +11,7 @@ import "./interfaces/IERC20.sol";
 import "./commons/Order.sol";
 
 
-contract UniswapEX is Order{
+contract UniswapexV2 is Order{
     using SafeMath for uint256;
     using Fabric for bytes32;
 
@@ -47,14 +47,15 @@ contract UniswapEX is Order{
     receive() external payable {
         require(
             msg.sender != tx.origin,
-            "Prevent sending ETH directly to the contract"
+            "UniswapexV2#receive: NO_SEND_ETH_PLEASE"
         );
     }
 
     function depositEth(
         bytes calldata _data
     ) external payable {
-        require(msg.value > 0, "No value provided");
+        require(msg.value > 0, "UniswapexV2#depositEth: VALUE_IS_0");
+
         (
             address module,
             address inputToken,
@@ -63,9 +64,9 @@ contract UniswapEX is Order{
             bytes memory data,
         ) = decodeOrder(_data);
 
-        require(inputToken == ETH_ADDRESS, "order is not from ETH");
+        require(inputToken == ETH_ADDRESS, "UniswapexV2#depositEth: WRONG_INPUT_TOKEN");
 
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             IModule(uint160(module)),
             IERC20(inputToken),
             owner,
@@ -84,8 +85,8 @@ contract UniswapEX is Order{
         address _witness,
         bytes calldata _data
     ) external {
-        require(msg.sender == _owner, "Only the owner of the order can cancel it");
-        bytes32 key = _keyOf(
+        require(msg.sender == _owner, "UniswapexV2#cancelOrder: INVALID_OWNER");
+        bytes32 key = keyOf(
             _module,
             _inputToken,
             _owner,
@@ -97,7 +98,8 @@ contract UniswapEX is Order{
         if (address(_inputToken) == ETH_ADDRESS) {
             amount = ethDeposits[key];
             ethDeposits[key] = 0;
-            msg.sender.transfer(amount);
+            (bool success,) = msg.sender.call{value: amount}("");
+            require(success, "UniswapexV2#cancelOrder: ETHER_TRANSFER_FAILED");
         } else {
             amount = key.executeVault(_inputToken, msg.sender);
         }
@@ -132,6 +134,7 @@ contract UniswapEX is Order{
             ),
             _amount,
             abi.encode(
+                _module,
                 _inputToken,
                 _owner,
                 _witness,
@@ -196,7 +199,7 @@ contract UniswapEX is Order{
         address _witness,
         bytes calldata _data
     ) external view returns (bool) {
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             _module,
             _inputToken,
             _owner,
@@ -218,7 +221,7 @@ contract UniswapEX is Order{
         address _witness,
         bytes memory _data
     ) public view returns (address) {
-        return _keyOf(
+        return keyOf(
             _module,
             _inputToken,
             _owner,
@@ -244,7 +247,7 @@ contract UniswapEX is Order{
             _witnesses
         );
 
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             _module,
             _inputToken,
             _owner,
@@ -254,7 +257,7 @@ contract UniswapEX is Order{
 
         // Pull amount
         uint256 amount = _pullOrder(_inputToken, key, address(_module));
-        require(amount > 0, "The order does not exists");
+        require(amount > 0, "UniswapexV2#executeOrder: INVALID_ORDER");
 
         uint256 bought = _module.execute(
             _inputToken,
@@ -284,7 +287,7 @@ contract UniswapEX is Order{
         bytes calldata _data,
         bytes calldata _auxData
     ) external view returns (bool) {
-        bytes32 key = _keyOf(
+        bytes32 key = keyOf(
             _module,
             _inputToken,
             _owner,
@@ -316,19 +319,20 @@ contract UniswapEX is Order{
         if (address(_inputToken) == ETH_ADDRESS) {
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
-            _to.transfer(amount);
+            (bool success,) = _to.call{value: amount}("");
+            require(success, "UniswapexV2#_pullOrder: PULL_ETHER_FAILED");
         } else {
             amount = _key.executeVault(_inputToken, _to);
         }
     }
 
-    function _keyOf(
+    function keyOf(
         IModule _module,
         IERC20 _inputToken,
         address payable _owner,
         address _witness,
         bytes memory _data
-    ) private pure returns (bytes32) {
+    ) public pure returns (bytes32) {
         return keccak256(
             abi.encode(
                 _module,

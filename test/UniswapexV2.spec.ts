@@ -1,19 +1,16 @@
 import { web3, artifacts } from '@nomiclabs/buidler'
+
 import { balanceSnap, etherSnap } from './helpers/balanceSnap'
-
-
-const eutils = require('ethereumjs-util')
+import { sign, toAddress, ethAddress } from './helpers/account'
+import assertRevert from './helpers/assertRevert'
 
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
-const UniswapEx = artifacts.require('UniswapEX')
 const ERC20 = artifacts.require('FakeERC20')
-const FakeUniswapFactory = artifacts.require('FakeUniswapFactory')
-const UniswapFactory = artifacts.require('UniswapFactory')
-const UniswapExchange = artifacts.require('UniswapExchange')
+const UniswapexV2 = artifacts.require('UniswapexV2')
 const VaultFactory = artifacts.require('VaultFactory')
-const LimitOrderModule = artifacts.require('LimitOrder')
+
 
 function buildCreate2Address(creatorAddress, saltHex, byteCode) {
   return `0x${web3.utils
@@ -29,40 +26,13 @@ function buildCreate2Address(creatorAddress, saltHex, byteCode) {
     .slice(-40)}`.toLowerCase()
 }
 
-function toAddress(pk) {
-  return eutils.toChecksumAddress(eutils.bufferToHex(eutils.privateToAddress(eutils.toBuffer(pk))))
-}
-
-function sign(address, priv) {
-  const hash = web3.utils.soliditySha3(
-    { t: 'address', v: address }
-  )
-  const sig = eutils.ecsign(
-    eutils.toBuffer(hash),
-    eutils.toBuffer(priv)
-  )
-
-  return eutils.bufferToHex(Buffer.concat([sig.r, sig.s, eutils.toBuffer(sig.v)]))
-}
-
 describe("UniswapexV2", function () {
 
   const zeroAddress = '0x0000000000000000000000000000000000000000'
-  const ethAddress = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
-  const fakeModule = '0x123eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
-
-  const maxBn = new BN(2).pow(new BN(256)).sub(new BN(1))
 
   let owner
   let user
-  let anotherUser
-  let hacker
   let fromOwner
-  let fromUser
-  let fromAnotherUser
-  let fromHacker
-
-  const never = maxBn
 
   const creationParams = {
     ...fromOwner,
@@ -73,20 +43,13 @@ describe("UniswapexV2", function () {
   const fakeKey = web3.utils.sha3('0x01')
   const anotherFakeKey = web3.utils.sha3('0x02')
   const ONE_ETH = new BN(1)
-  const FIXED_SALT =
-    '0xf9fea21bcccd3d13caa0d7f67bc4bd0776a06c420e932ee5add8f3affb3f354b'
   const CRATIONCODE_VAULT =
     '6012600081600A8239F360008060448082803781806038355AF132FF'
 
   // Contracts
   let token1
-  let token2
   let vaultFactory
   let uniswapEx
-  let uniswapFactory
-  let uniswapToken1
-  let uniswapToken2
-  let limitOrderModule
 
   beforeEach(async function () {
 
@@ -94,449 +57,348 @@ describe("UniswapexV2", function () {
 
     owner = accounts[1]
     user = accounts[2]
-    anotherUser = accounts[3]
-    hacker = accounts[4]
     fromOwner = { from: owner }
-    fromUser = { from: user }
-    fromAnotherUser = { from: anotherUser }
-    fromHacker = { from: hacker }
 
     // Create tokens
     token1 = await ERC20.new(creationParams)
-    token2 = await ERC20.new(creationParams)
-    // Deploy Uniswap
-    uniswapFactory = await UniswapFactory.at(
-      (await FakeUniswapFactory.new()).address
-    )
-    await uniswapFactory.createExchange(token1.address)
-    await uniswapFactory.createExchange(token2.address)
-    uniswapToken1 = await UniswapExchange.at(
-      await uniswapFactory.getExchange(token1.address)
-    )
-    uniswapToken2 = await UniswapExchange.at(
-      await uniswapFactory.getExchange(token2.address)
-    )
+    await token1.setBalance(new BN(1000000000), owner)
 
     // Deploy exchange
-    uniswapEx = await UniswapEx.new(creationParams)
+    uniswapEx = await UniswapexV2.new(creationParams)
 
     // Deploy vault
     vaultFactory = await VaultFactory.new(creationParams)
-
-    // Limit Orders module
-    limitOrderModule = await LimitOrderModule.new(uniswapFactory.address, creationParams)
-
-    // Add liquidity to Uniswap exchange 1
-    await token1.setBalance(new BN(1000000000), owner)
-    await token1.approve(uniswapToken1.address, maxBn, { from: owner })
-    await uniswapToken1.addLiquidity(0, new BN(1000000000), never, {
-      from: owner,
-      value: new BN(5000000000)
-    })
-
-    // Add liquidity to Uniswap exchange 2
-    await token2.setBalance(new BN(1000000000), owner)
-    await token2.approve(uniswapToken2.address, maxBn, { from: owner })
-    await uniswapToken2.addLiquidity(0, new BN(1000000000), never, {
-      from: owner,
-      value: new BN(5000000000)
-    })
   })
 
   describe('Constructor', function () {
-    it('should be depoyed', async function () {
-      const contract = await UniswapEx.new(uniswapFactory.address)
+    it('should be depoyed', async () => {
+      const contract = await UniswapexV2.new()
 
       expect(contract).to.not.be.equal(zeroAddress)
     })
   })
 
-  describe('Limit Orders', function () {
-    describe('It should trade on Uniswap v1', async function () {
-      it('should execute buy tokens with ETH', async () => {
-        const secret = web3.utils.randomHex(32)
-        const witness = toAddress(secret)
-
-        // Create order
-        const encodedOrder = await uniswapEx.encodeEthOrder(
-          limitOrderModule.address,         // Limit orders module
-          ethAddress,                       // ETH Address
-          user,                             // Owner of the order
-          witness,                          // Witness public address
-          web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'uint256'],
-            [
-              token1.address,               // Buy TOKEN 1
-              new BN(300),                  // Get at least 300 Tokens
-              new BN(10)                    // Pay 10 WEI to sender
-            ]
-          ),
-          secret                            // Witness secret
-        )
-
-        await uniswapEx.depositEth(
-          encodedOrder,
-          {
-            value: new BN(10000),
-            from: user
-          }
-        )
-
-        // Take balance snapshots
-        const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX')
-        const executerEtherSnap = await etherSnap(anotherUser, 'executer')
-        const uniswapEtherSnap = await etherSnap(uniswapToken1.address, 'uniswap')
-        const userTokenSnap = await balanceSnap(token1, user, 'user')
-        const uniswapTokenSnap = await balanceSnap(
-          token1,
-          uniswapToken1.address,
-          'uniswap'
-        )
-
-        // Sign witnesses using the secret
-        const witnesses = sign(anotherUser, secret)
-
-        // Execute order
-        const tx = await uniswapEx.executeOrder(
-          limitOrderModule.address,         // Limit orders module
-          ethAddress,                       // Sell ETH
-          user,                             // Owner of the order
-          web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'uint256'],
-            [
-              token1.address,               // Buy TOKEN 1
-              new BN(300),                  // Get at least 300 Tokens
-              new BN(10)                    // Pay 10 WEI to sender
-            ]
-          ),
-          witnesses,                        // Witnesses of the secret
-          web3.eth.abi.encodeParameters(
-            ['address'],
-            [anotherUser]
-          ),
-          {
-            from: anotherUser,
-            gasPrice: 0
-          }
-        )
-
-        const bought = tx.logs[0].args._bought
-
-        // Validate balances
-        await exEtherSnap.requireDecrease(new BN(10000))
-        await executerEtherSnap.requireIncrease(new BN(10))
-        await uniswapEtherSnap.requireIncrease(new BN(9990))
-        await userTokenSnap.requireIncrease(bought)
-        await uniswapTokenSnap.requireDecrease(bought)
-      })
-
-      it('should execute sell tokens for ETH', async () => {
-        const secret = web3.utils.randomHex(32)
-        const witness = toAddress(secret)
-
-        // Encode order transfer
-        const orderTx = await uniswapEx.encodeTokenOrder(
-          limitOrderModule.address,     // Limit orders module
-          token1.address,               // Sell token 1
-          user,                         // Owner of the order
-          witness,                      // Witness address
-          web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'uint256'],
-            [
-              ethAddress,               // Buy ETH
-              new BN(50),               // Get at least 50 ETH Wei
-              new BN(15)                // Pay 15 WEI to sender
-            ]
-          ),
-          secret,                       // Witness secret
-          new BN(10000)                 // Tokens to sell
-        )
-
-        const vaultAddress = await uniswapEx.vaultOfOrder(
-          limitOrderModule.address,     // Limit orders module
-          token1.address,               // Sell token 1
-          user,                         // Owner of the order
-          witness,                      // Witness address
-          web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'uint256'],
-            [
-              ethAddress,               // Buy ETH
-              new BN(50),               // Get at least 50 ETH Wei
-              new BN(15)                // Pay 15 WEI to sender
-            ]
-          )
-        )
-
-        const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
-
-        await token1.setBalance(new BN(10000), user)
-
-        // Send tokens tx
-        await web3.eth.sendTransaction({
-          from: user,
-          to: token1.address,
-          data: orderTx,
-          gasPrice: 0
-        })
-
-        await vaultSnap.requireIncrease(new BN(10000))
-
-        // Take balance snapshots
-        const exTokenSnap = await balanceSnap(
-          token1,
-          uniswapEx.address,
-          'Uniswap EX'
-        )
-        const exEtherSnap = await balanceSnap(
-          token1,
-          uniswapEx.address,
-          'Uniswap EX'
-        )
-        const executerEtherSnap = await etherSnap(anotherUser, 'executer')
-        const uniswapTokenSnap = await balanceSnap(
-          token1,
-          uniswapToken1.address,
-          'uniswap'
-        )
-        const uniswapEtherSnap = await etherSnap(uniswapToken1.address, 'uniswap')
-        const userTokenSnap = await etherSnap(user, 'user')
-
-        // Sign witnesses using the secret
-        const witnesses = sign(anotherUser, secret)
-
-        // Execute order
-        const tx = await uniswapEx.executeOrder(
-          limitOrderModule.address,     // Limit orders module
-          token1.address,               // Sell token 1
-          user,                         // Owner of the order
-          web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'uint256'],
-            [
-              ethAddress,               // Buy ETH
-              new BN(50),               // Get at least 50 ETH Wei
-              new BN(15)                // Pay 15 WEI to sender
-            ]
-          ),
-          witnesses,                    // Witnesses, sender signed using the secret
-          web3.eth.abi.encodeParameters(
-            ['address'],
-            [anotherUser]
-          ),
-          {
-            from: anotherUser,
-            gasPrice: 0
-          }
-        )
-
-        const bought = tx.logs[0].args._bought
-
-        // Validate balances
-        await exEtherSnap.requireConstant()
-        await exTokenSnap.requireConstant()
-        await executerEtherSnap.requireIncrease(new BN(15))
-        await uniswapTokenSnap.requireIncrease(new BN(10000))
-        await uniswapEtherSnap.requireDecrease(bought.add(new BN(15)))
-        await userTokenSnap.requireIncrease(bought)
-      })
-
-      it('Should exchange tokens for tokens', async function () {
-        const secret = web3.utils.randomHex(32)
-        const witness = toAddress(secret)
-
-        // Encode order transfer
-        const orderTx = await uniswapEx.encodeTokenOrder(
-          limitOrderModule.address,     // Limit orders module
-          token1.address,               // Sell token 1
-          user,                         // Owner of the order
-          witness,                      // Witness address
-          web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'uint256'],
-            [
-              token2.address,           // Buy TOKEN 2
-              new BN(50),               // Get at least 50 ETH Wei
-              new BN(9)                 // Pay 9 WEI to sender
-            ]
-          ),
-          secret,                       // Witness secret
-          new BN(1000)                  // Tokens to sell
-        )
-
-        const vaultAddress = await uniswapEx.vaultOfOrder(
-          limitOrderModule.address,     // Limit orders module
-          token1.address,               // Sell token 1
-          user,                         // Owner of the order
-          witness,                      // Witness address
-          web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'uint256'],
-            [
-              token2.address,           // Buy TOKEN 2
-              new BN(50),               // Get at least 50 ETH Wei
-              new BN(9)                 // Pay 9 WEI to sender
-            ]
-          )
-        )
-
-        const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
-
-        await token1.setBalance(new BN(1000), user)
-
-        // Send tokens tx
-        await web3.eth.sendTransaction({
-          from: user,
-          to: token1.address,
-          data: orderTx,
-          gasPrice: 0
-        })
-
-        await vaultSnap.requireIncrease(new BN(1000))
-
-        // Take balance snapshots
-        const exToken1Snap = await balanceSnap(
-          token1,
-          uniswapEx.address,
-          'Uniswap EX'
-        )
-        const exToken2Snap = await balanceSnap(
-          token1,
-          uniswapEx.address,
-          'Uniswap EX'
-        )
-        const exEtherSnap = await balanceSnap(
-          token1,
-          uniswapEx.address,
-          'Uniswap EX'
-        )
-        const executerEtherSnap = await etherSnap(anotherUser, 'executer')
-        const uniswap1TokenSnap = await balanceSnap(
-          token1,
-          uniswapToken1.address,
-          'uniswap'
-        )
-        const uniswap2TokenSnap = await balanceSnap(
-          token2,
-          uniswapToken2.address,
-          'uniswap'
-        )
-        const userToken2Snap = await balanceSnap(token2, user, 'user')
-
-        const witnesses = sign(anotherUser, secret)
-
-        // Execute order
-        const tx = await uniswapEx.executeOrder(
-          limitOrderModule.address,     // Limit orders module
-          token1.address,               // Sell token 1
-          user,                         // Owner of the order
-          web3.eth.abi.encodeParameters(
-            ['address', 'uint256', 'uint256'],
-            [
-              token2.address,           // Buy TOKEN 2
-              new BN(50),               // Get at least 50 ETH Wei
-              new BN(9)                 // Pay 9 WEI to sender
-            ]
-          ),
-          witnesses,                    // Witnesses, sender signed using the secret
-          web3.eth.abi.encodeParameters(
-            ['address'],
-            [anotherUser]
-          ),
-          {
-            from: anotherUser,
-            gasPrice: 0
-          }
-        )
-
-        const bought = tx.logs[0].args._bought
-
-        // Validate balances
-        await exEtherSnap.requireConstant()
-        await exToken1Snap.requireConstant()
-        await exToken2Snap.requireConstant()
-        await vaultSnap.requireConstant()
-        await executerEtherSnap.requireIncrease(new BN(9))
-        await uniswap1TokenSnap.requireIncrease(new BN(1000))
-        await uniswap2TokenSnap.requireDecrease(bought)
-        await userToken2Snap.requireIncrease(bought)
-      })
-    })
-  })
-
-  describe('It should work with easter egg', async function () {
-    it('should execute a trade', async function () {
-      const randsecret = web3.utils.randomHex(13).replace('0x', '')
-      const secret = `0x20756e697377617065782e696f2020d83ddc09${randsecret}`
+  describe('Cancel ETH Order', function () {
+    it('should cancel an ETH order', async () => {
+      const secret = web3.utils.randomHex(32)
       const witness = toAddress(secret)
+
+      const data = web3.eth.abi.encodeParameters(
+        ['address', 'uint256', 'uint256'],
+        [
+          token1.address,               // Buy TOKEN 1
+          new BN(300),                  // Get at least 300 Tokens
+          new BN(10)                    // Pay 10 WEI to sender
+        ]
+      )
 
       // Create order
       const encodedOrder = await uniswapEx.encodeEthOrder(
-        limitOrderModule.address,         // Limit orders module
+        vaultFactory.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
         witness,                          // Witness public address
-        web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
-          [
-            token1.address,               // Buy TOKEN 1
-            new BN(300),                  // Get at least 300 Tokens
-            new BN(10)                    // Pay 10 WEI to sender
-          ]
-        ),
-        secret                   // Witness secret
+        data,                             // data
+        secret                            // Witness secret
       )
 
-      await uniswapEx.depositEth(
+      // Take balance snapshots
+      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX ETH')
+      const userEtherSnap = await etherSnap(user, 'User ETH')
+      const userTokenSnap = await balanceSnap(token1, user, 'User token1')
+      const uniswapTokenSnap = await balanceSnap(
+        token1,
+        uniswapEx.address,
+        'Uniswap Ex Token1'
+      )
+
+      const value = new BN(10000)
+      const depositTx = await uniswapEx.depositEth(
         encodedOrder,
         {
-          value: new BN(10000),
+          value,
+          gasPrice: 0,
           from: user
         }
       )
 
-      // Take balance snapshots
-      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX')
-      const executerEtherSnap = await etherSnap(anotherUser, 'executer')
-      const uniswapEtherSnap = await etherSnap(uniswapToken1.address, 'uniswap')
-      const userTokenSnap = await balanceSnap(token1, user, 'user')
-      const uniswapTokenSnap = await balanceSnap(
-        token1,
-        uniswapToken1.address,
-        'uniswap'
-      )
+      // Validate balances
+      await exEtherSnap.requireIncrease(value)
+      await uniswapTokenSnap.requireConstant()
+      await userEtherSnap.requireDecrease(value)
+      await userTokenSnap.requireConstant()
 
-      // Sign witnesses using the secret
-      const witnesses = sign(anotherUser, secret)
-
-      // Execute order
-      const tx = await uniswapEx.executeOrder(
-        limitOrderModule.address,         // Limit orders module
+      // Cancel order
+      const cancelTx = await uniswapEx.cancelOrder(
+        vaultFactory.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
-        web3.eth.abi.encodeParameters(
-          ['address', 'uint256', 'uint256'],
-          [
-            token1.address,               // Buy TOKEN 1
-            new BN(300),                  // Get at least 300 Tokens
-            new BN(10)                    // Pay 10 WEI to sender
-          ]
-        ),
-        witnesses,                        // Witnesses of the secret
-        web3.eth.abi.encodeParameters(
-          ['address'],
-          [anotherUser]
-        ),
+        witness,                      // witness
+        data,                         // data
         {
-          from: anotherUser,
+          gasPrice: 0,
+          from: user
+        }
+      )
+
+      expect(cancelTx.logs[0].event).to.be.equal('OrderCancelled')
+      expect(cancelTx.logs[0].args._key).to.be.equal(depositTx.logs[0].args._key)
+      expect(cancelTx.logs[0].args._inputToken).to.be.equal(ethAddress)
+      expect(cancelTx.logs[0].args._owner).to.be.equal(user)
+      expect(cancelTx.logs[0].args._witness).to.be.equal(witness)
+      expect(cancelTx.logs[0].args._data).to.be.equal(data)
+      expect(cancelTx.logs[0].args._amount).to.be.eq.BN(value)
+
+      // Validate balances
+      await exEtherSnap.requireDecrease(value)
+      await uniswapTokenSnap.requireConstant()
+      await userEtherSnap.requireIncrease(value)
+      await userTokenSnap.requireConstant()
+    })
+
+    it('should cancel token order', async () => {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret)
+
+      const data = web3.eth.abi.encodeParameters(
+        ['address', 'uint256', 'uint256'],
+        [
+          ethAddress,               // Buy ETH
+          new BN(50),               // Get at least 50 ETH Wei
+          new BN(15)                // Pay 15 WEI to sender
+        ]
+      )
+
+      const amount = new BN(10000)
+      // Encode order transfer
+      const orderTx = await uniswapEx.encodeTokenOrder(
+        vaultFactory.address,     // Limit orders module
+        token1.address,               // Sell token 1
+        user,                         // Owner of the order
+        witness,                      // Witness address
+        data,                         // data
+        secret,                       // Witness secret
+        amount                    // Tokens to sell
+      )
+
+      const vaultAddress = await uniswapEx.vaultOfOrder(
+        vaultFactory.address,     // Limit orders module
+        token1.address,               // Sell token 1
+        user,                         // Owner of the order
+        witness,                      // Witness address
+        data
+      )
+
+      const key = web3.utils.sha3(web3.eth.abi.encodeParameters(
+        ['address', 'address', 'address', 'address', 'bytes'],
+        [
+          vaultFactory.address,
+          token1.address,
+          user,
+          witness,
+          data
+        ]
+      ))
+
+
+      await token1.setBalance(amount, user)
+
+      // Take balance snapshots
+      const vaultETHSnap = await etherSnap(vaultAddress, 'Token vault ETH')
+      const vaultTokenSnap = await balanceSnap(token1, vaultAddress, 'Token vault token1')
+      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX ETH')
+      const userEtherSnap = await etherSnap(user, 'User ETH')
+      const userTokenSnap = await balanceSnap(token1, user, 'User token1')
+      const uniswapTokenSnap = await balanceSnap(
+        token1,
+        uniswapEx.address,
+        'Uniswap Ex Token1'
+      )
+
+      // Send tokens tx
+      await web3.eth.sendTransaction({
+        from: user,
+        to: token1.address,
+        data: orderTx,
+        gasPrice: 0
+      })
+
+
+      // Validate balances
+      await vaultETHSnap.requireConstant()
+      await vaultTokenSnap.requireIncrease(amount)
+      await exEtherSnap.requireConstant()
+      await uniswapTokenSnap.requireConstant()
+      await userEtherSnap.requireConstant()
+      await userTokenSnap.requireDecrease(amount)
+
+      // Cancel order
+      const cancelTx = await uniswapEx.cancelOrder(
+        vaultFactory.address,     // Limit orders module
+        token1.address,               // Sell token 1
+        user,                         // Owner of the order
+        witness,                      // witness
+        data,                         // data
+        {
+          from: user,
           gasPrice: 0
         }
       )
 
-      const bought = tx.logs[0].args._bought
+      expect(cancelTx.logs[0].event).to.be.equal('OrderCancelled')
+      expect(cancelTx.logs[0].args._key).to.be.equal(key)
+      expect(cancelTx.logs[0].args._inputToken).to.be.equal(token1.address)
+      expect(cancelTx.logs[0].args._owner).to.be.equal(user)
+      expect(cancelTx.logs[0].args._witness).to.be.equal(witness)
+      expect(cancelTx.logs[0].args._data).to.be.equal(data)
+      expect(cancelTx.logs[0].args._amount).to.be.eq.BN(amount)
 
       // Validate balances
-      await exEtherSnap.requireDecrease(new BN(10000))
-      await executerEtherSnap.requireIncrease(new BN(10))
-      await uniswapEtherSnap.requireIncrease(new BN(9990))
-      await userTokenSnap.requireIncrease(bought)
-      await uniswapTokenSnap.requireDecrease(bought)
+      await vaultETHSnap.requireConstant()
+      await vaultTokenSnap.requireDecrease(amount)
+      await exEtherSnap.requireConstant()
+      await uniswapTokenSnap.requireConstant()
+      await userEtherSnap.requireConstant()
+      await userTokenSnap.requireIncrease(amount)
+    })
+
+    it('should keep balance if the order was cancelled twice', async () => {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret)
+
+      const data = web3.eth.abi.encodeParameters(
+        ['address', 'uint256', 'uint256'],
+        [
+          token1.address,               // Buy TOKEN 1
+          new BN(300),                  // Get at least 300 Tokens
+          new BN(10)                    // Pay 10 WEI to sender
+        ]
+      )
+
+      // Create order
+      const encodedOrder = await uniswapEx.encodeEthOrder(
+        vaultFactory.address,         // Limit orders module
+        ethAddress,                       // ETH Address
+        user,                             // Owner of the order
+        witness,                          // Witness public address
+        data,                             // data
+        secret                            // Witness secret
+      )
+
+      // Take balance snapshots
+      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX ETH')
+      const userEtherSnap = await etherSnap(user, 'User ETH')
+      const userTokenSnap = await balanceSnap(token1, user, 'User token1')
+      const uniswapTokenSnap = await balanceSnap(
+        token1,
+        uniswapEx.address,
+        'Uniswap Ex Token1'
+      )
+
+      const value = new BN(10000)
+      const depositTx = await uniswapEx.depositEth(
+        encodedOrder,
+        {
+          value,
+          gasPrice: 0,
+          from: user
+        }
+      )
+
+      // Validate balances
+      await exEtherSnap.requireIncrease(value)
+      await uniswapTokenSnap.requireConstant()
+      await userEtherSnap.requireDecrease(value)
+      await userTokenSnap.requireConstant()
+
+      // Cancel order
+      const cancelTx = await uniswapEx.cancelOrder(
+        vaultFactory.address,         // Limit orders module
+        ethAddress,                       // Sell ETH
+        user,                             // Owner of the order
+        witness,                      // witness
+        data,                         // data
+        {
+          gasPrice: 0,
+          from: user
+        }
+      )
+
+      expect(cancelTx.logs[0].event).to.be.equal('OrderCancelled')
+      expect(cancelTx.logs[0].args._key).to.be.equal(depositTx.logs[0].args._key)
+      expect(cancelTx.logs[0].args._inputToken).to.be.equal(ethAddress)
+      expect(cancelTx.logs[0].args._owner).to.be.equal(user)
+      expect(cancelTx.logs[0].args._witness).to.be.equal(witness)
+      expect(cancelTx.logs[0].args._data).to.be.equal(data)
+      expect(cancelTx.logs[0].args._amount).to.be.eq.BN(value)
+
+      // Validate balances
+      await exEtherSnap.requireDecrease(value)
+      await uniswapTokenSnap.requireConstant()
+      await userEtherSnap.requireIncrease(value)
+      await userTokenSnap.requireConstant()
+
+      await uniswapEx.cancelOrder(
+        vaultFactory.address,         // Limit orders module
+        ethAddress,                       // Sell ETH
+        user,                             // Owner of the order
+        witness,                      // witness
+        data,                         // data
+        {
+          gasPrice: 0,
+          from: user
+        }
+      )
+
+      // Validate balances
+      await exEtherSnap.requireConstant()
+      await uniswapTokenSnap.requireConstant()
+      await userEtherSnap.requireConstant()
+      await userTokenSnap.requireConstant()
+
+    })
+
+    it('reverts when cancel by hacker', async () => {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret)
+
+      const data = web3.eth.abi.encodeParameters(
+        ['address', 'uint256', 'uint256'],
+        [
+          token1.address,               // Buy TOKEN 1
+          new BN(300),                  // Get at least 300 Tokens
+          new BN(10)                    // Pay 10 WEI to sender
+        ]
+      )
+
+      // Create order
+      const encodedOrder = await uniswapEx.encodeEthOrder(
+        vaultFactory.address,         // Limit orders module
+        ethAddress,                       // ETH Address
+        user,                             // Owner of the order
+        witness,                          // Witness public address
+        data,                             // data
+        secret                            // Witness secret
+      )
+
+      const value = new BN(10000)
+      await uniswapEx.depositEth(
+        encodedOrder,
+        {
+          value,
+          from: user
+        }
+      )
+
+      // Cancel order
+      await assertRevert(uniswapEx.cancelOrder(
+        vaultFactory.address,         // Limit orders module
+        ethAddress,                       // Sell ETH
+        user,                             // Owner of the order
+        witness,                      // witness
+        data,                         // data
+        fromOwner
+      ), 'UniswapexV2#cancelOrder: INVALID_OWNER')
     })
   })
 
