@@ -25,7 +25,7 @@ library UniswapUtils {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(address _factory, address _tokenA, address _tokenB, bytes memory _initCodeHash) internal pure returns (address pair) {
+    function pairFor(address _factory, address _tokenA, address _tokenB, bytes32 _initCodeHash) internal pure returns (address pair) {
         (address token0, address token1) = sortTokens(_tokenA, _tokenB);
         pair = address(uint(keccak256(abi.encodePacked(
                 hex'ff',
@@ -36,7 +36,7 @@ library UniswapUtils {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairForSorted(address _factory, address _token0, address _token1, bytes memory _initCodeHash) internal pure returns (address pair) {
+    function pairForSorted(address _factory, address _token0, address _token1, bytes32 _initCodeHash) internal pure returns (address pair) {
         pair = address(uint(keccak256(abi.encodePacked(
                 hex'ff',
                 _factory,

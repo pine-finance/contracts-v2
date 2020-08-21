@@ -16,9 +16,9 @@ contract UniswapV2Handler is IHandler {
 
     IWETH public immutable WETH;
     address public immutable FACTORY;
-    bytes public FACTORY_CODE_HASH;
+    bytes32 public immutable FACTORY_CODE_HASH;
 
-    constructor(address _factory, IWETH _weth, bytes memory _codeHash) public {
+    constructor(address _factory, IWETH _weth, bytes32 _codeHash) public {
         FACTORY = _factory;
         WETH = _weth;
         FACTORY_CODE_HASH = _codeHash;

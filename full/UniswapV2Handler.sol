@@ -339,7 +339,7 @@ library UniswapUtils {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(address _factory, address _tokenA, address _tokenB, bytes memory _initCodeHash) internal pure returns (address pair) {
+    function pairFor(address _factory, address _tokenA, address _tokenB, bytes32 _initCodeHash) internal pure returns (address pair) {
         (address token0, address token1) = sortTokens(_tokenA, _tokenB);
         pair = address(uint(keccak256(abi.encodePacked(
                 hex'ff',
@@ -350,7 +350,7 @@ library UniswapUtils {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairForSorted(address _factory, address _token0, address _token1, bytes memory _initCodeHash) internal pure returns (address pair) {
+    function pairForSorted(address _factory, address _token0, address _token1, bytes32 _initCodeHash) internal pure returns (address pair) {
         pair = address(uint(keccak256(abi.encodePacked(
                 hex'ff',
                 _factory,
@@ -431,9 +431,9 @@ contract UniswapV2Handler is IHandler {
 
     IWETH public immutable WETH;
     address public immutable FACTORY;
-    bytes public FACTORY_CODE_HASH;
+    bytes32 public immutable FACTORY_CODE_HASH;
 
-    constructor(address _factory, IWETH _weth, bytes memory _codeHash) public {
+    constructor(address _factory, IWETH _weth, bytes32 _codeHash) public {
         FACTORY = _factory;
         WETH = _weth;
         FACTORY_CODE_HASH = _codeHash;
