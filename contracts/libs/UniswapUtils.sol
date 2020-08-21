@@ -25,26 +25,26 @@ library UniswapUtils {
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairFor(address _factory, address _tokenA, address _tokenB) internal view returns (address pair) {
+    function pairFor(address _factory, address _tokenA, address _tokenB, bytes memory _initCodeHash) internal view returns (address pair) {
         (address token0, address token1) = sortTokens(_tokenA, _tokenB);
-        pair = Fac(_factory).getPair(token0, token1);
-        // pair = address(uint(keccak256(abi.encodePacked(
-        //         hex'ff',
-        //         _factory,
-        //         keccak256(abi.encodePacked(token0, token1)),
-        //         hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-        //     ))));
+       //  pair = Fac(_factory).getPair(token0, token1);
+        pair = address(uint(keccak256(abi.encodePacked(
+                hex'ff',
+                _factory,
+                keccak256(abi.encodePacked(token0, token1)),
+                _initCodeHash // init code hash
+            ))));
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
-    function pairForSorted(address _factory, address _token0, address _token1) internal view returns (address pair) {
-        pair = Fac(_factory).getPair(_token0, _token1);
-        // pair = address(uint(keccak256(abi.encodePacked(
-        //         hex'ff',
-        //         _factory,
-        //         keccak256(abi.encodePacked(_token0, _token1)),
-        //         hex'96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f' // init code hash
-        //     ))));
+    function pairForSorted(address _factory, address _token0, address _token1, bytes memory _initCodeHash) internal view returns (address pair) {
+        //pair = Fac(_factory).getPair(_token0, _token1);
+        pair = address(uint(keccak256(abi.encodePacked(
+                hex'ff',
+                _factory,
+                keccak256(abi.encodePacked(_token0, _token1)),
+                _initCodeHash // init code hash
+            ))));
     }
 
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset

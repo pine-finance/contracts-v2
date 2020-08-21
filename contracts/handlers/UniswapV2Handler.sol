@@ -16,10 +16,12 @@ contract UniswapV2Handler is IHandler {
 
     IWETH public immutable WETH;
     address public immutable FACTORY;
+    bytes public FACTORY_CODE_HASH;
 
-    constructor(address _factory, IWETH _weth) public {
+    constructor(address _factory, IWETH _weth, bytes memory _codeHash) public {
         FACTORY = _factory;
         WETH = _weth;
+        FACTORY_CODE_HASH = _codeHash;
     }
 
     function handle(
@@ -136,11 +138,11 @@ contract UniswapV2Handler is IHandler {
             if (_amount < fee) return (false, 0);
             bought = _estimate(address(WETH), toToken, _amount.sub(fee));
         } else if (toToken == address(WETH) || toToken == UniswapexUtils.ETH_ADDRESS) {
-            uint256 bought = _estimate(fromToken, address(WETH), _amount);
+            bought = _estimate(fromToken, address(WETH), _amount);
             if (bought < fee) return (false, 0);
             bought = bought.sub(fee);
         } else {
-            uint256 bought = _estimate(fromToken, address(WETH), _amount);
+            bought = _estimate(fromToken, address(WETH), _amount);
             if (bought < fee) return (false, 0);
             bought = _estimate(address(WETH), toToken, bought.sub(fee));
         }
@@ -154,7 +156,7 @@ contract UniswapV2Handler is IHandler {
     function _estimate(address _from, address _to, uint256 _val) internal view returns (uint256 bought) {
         // Get uniswap trading pair
         (address token0, address token1) = UniswapUtils.sortTokens(_from, _to);
-        IUniswapV2Pair pair = IUniswapV2Pair(UniswapUtils.pairForSorted(FACTORY, token0, token1));
+        IUniswapV2Pair pair = IUniswapV2Pair(UniswapUtils.pairForSorted(FACTORY, token0, token1, FACTORY_CODE_HASH));
 
         // Compute limit for uniswap trade
         (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
@@ -175,7 +177,7 @@ contract UniswapV2Handler is IHandler {
     function _swap(address _from, address _to, uint256 _val, address _ben) internal returns (uint256 bought) {
         // Get uniswap trading pair
         (address token0, address token1) = UniswapUtils.sortTokens(_from, _to);
-        IUniswapV2Pair pair = IUniswapV2Pair(UniswapUtils.pairForSorted(FACTORY, token0, token1));
+        IUniswapV2Pair pair = IUniswapV2Pair(UniswapUtils.pairForSorted(FACTORY, token0, token1, FACTORY_CODE_HASH));
 
         // Send tokens to uniswap pair
         require(SafeERC20.transfer(IERC20(_from), address(pair), _val), "UniswapV2Handler#_swap: ERROR_SENDING_TOKENS");

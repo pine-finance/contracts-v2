@@ -13,6 +13,7 @@ const FakeUniswapFactory = artifacts.require('FakeUniswapFactory')
 const UniswapV1Factory = artifacts.require('UniswapFactory')
 const UniswapV2Factory = artifacts.require('UniswapV2Factory')
 const UniswapV2Router01 = artifacts.require('UniswapV2Router01')
+const UniswapV2Pair = artifacts.require('UniswapV2Pair')
 const UniswapExchange = artifacts.require('UniswapExchange')
 const LimitOrderModule = artifacts.require('LimitOrder')
 const UniswapV2Handler = artifacts.require('UniswapV2Handler')
@@ -93,7 +94,7 @@ describe("Limit Orders Module", () => {
     limitOrderModule = await LimitOrderModule.new(creationParams)
 
     // Uniswap Relayer
-    uniswapV2Handler = await UniswapV2Handler.new(uniswapV2Factory.address, weth.address, creationParams)
+    uniswapV2Handler = await UniswapV2Handler.new(uniswapV2Factory.address, weth.address, web3.utils.soliditySha3(UniswapV2Pair._json.bytecode), creationParams)
     uniswapV1Handler = await UniswapV1Handler.new(uniswapV1Factory.address, creationParams)
 
 
