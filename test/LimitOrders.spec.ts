@@ -191,8 +191,8 @@ describe("Limit Orders Module", () => {
         'uniswap'
       )
 
-      // Sign witnesses using the secret
-      const witnesses = sign(anotherUser, secret)
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await uniswapEx.executeOrder(
@@ -206,7 +206,7 @@ describe("Limit Orders Module", () => {
             new BN(300)                  // Get at least 300 Tokens
           ]
         ),
-        witnesses,                        // Witnesses of the secret
+        signature,                        // signature of the secret
         web3.eth.abi.encodeParameters(
           ['address', 'address', 'uint256'],
           [uniswapV1Handler.address, anotherUser, new BN(10)]
@@ -296,8 +296,8 @@ describe("Limit Orders Module", () => {
       const uniswapEtherSnap = await etherSnap(uniswapToken1V1.address, 'uniswap')
       const userTokenSnap = await etherSnap(user, 'user')
 
-      // Sign witnesses using the secret
-      const witnesses = sign(anotherUser, secret)
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await uniswapEx.executeOrder(
@@ -311,7 +311,7 @@ describe("Limit Orders Module", () => {
             new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
-        witnesses,                    // Witnesses, sender signed using the secret
+        signature,                    // signature, sender signed using the secret
         web3.eth.abi.encodeParameters(
           ['address', 'address', 'uint256'],
           [uniswapV1Handler.address, anotherUser, new BN(15)]
@@ -413,7 +413,7 @@ describe("Limit Orders Module", () => {
       )
       const userToken2Snap = await balanceSnap(token2, user, 'user')
 
-      const witnesses = sign(anotherUser, secret)
+      const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await uniswapEx.executeOrder(
@@ -427,7 +427,7 @@ describe("Limit Orders Module", () => {
             new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
-        witnesses,                    // Witnesses, sender signed using the secret
+        signature,                    // signature, sender signed using the secret
         web3.eth.abi.encodeParameters(
           ['address', 'address', 'uint256'],
           [uniswapV1Handler.address, anotherUser, new BN(9)]
@@ -492,8 +492,8 @@ describe("Limit Orders Module", () => {
         'uniswap'
       )
 
-      // Sign witnesses using the secret
-      const witnesses = sign(anotherUser, secret)
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await uniswapEx.executeOrder(
@@ -507,7 +507,7 @@ describe("Limit Orders Module", () => {
             new BN(300)                  // Get at least 300 Tokens
           ]
         ),
-        witnesses,                        // Witnesses of the secret
+        signature,                        // signature of the secret
         web3.eth.abi.encodeParameters(
           ['address', 'address', 'uint256'],
           [uniswapV2Handler.address, anotherUser, new BN(10)]
@@ -597,8 +597,8 @@ describe("Limit Orders Module", () => {
       const uniswapWethSnap = await balanceSnap(weth, uniswapToken1V2, 'uniswap')
       const userTokenSnap = await etherSnap(user, 'user')
 
-      // Sign witnesses using the secret
-      const witnesses = sign(anotherUser, secret)
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await uniswapEx.executeOrder(
@@ -612,7 +612,7 @@ describe("Limit Orders Module", () => {
             new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
-        witnesses,                    // Witnesses, sender signed using the secret
+        signature,                    // signature, sender signed using the secret
         web3.eth.abi.encodeParameters(
           ['address', 'address', 'uint256'],
           [uniswapV2Handler.address, anotherUser, new BN(15)]
@@ -714,7 +714,7 @@ describe("Limit Orders Module", () => {
       )
       const userToken2Snap = await balanceSnap(token2, user, 'user')
 
-      const witnesses = sign(anotherUser, secret)
+      const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await uniswapEx.executeOrder(
@@ -728,7 +728,7 @@ describe("Limit Orders Module", () => {
             new BN(50)               // Get at least 50 ETH Wei
           ]
         ),
-        witnesses,                    // Witnesses, sender signed using the secret
+        signature,                    // signature, sender signed using the secret
         web3.eth.abi.encodeParameters(
           ['address', 'address', 'uint256'],
           [uniswapV2Handler.address, anotherUser, new BN(9)]
@@ -796,8 +796,8 @@ describe("Limit Orders Module", () => {
         'uniswap'
       )
 
-      // Sign witnesses using the secret
-      const witnesses = sign(anotherUser, secret)
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await uniswapEx.executeOrder(
@@ -812,7 +812,7 @@ describe("Limit Orders Module", () => {
             new BN(10)                    // Pay 10 WEI to sender
           ]
         ),
-        witnesses,                        // Witnesses of the secret
+        signature,                        // signature of the secret
         web3.eth.abi.encodeParameters(
           ['address', 'address', 'uint256'],
           [uniswapV1Handler.address, anotherUser, new BN(10)]

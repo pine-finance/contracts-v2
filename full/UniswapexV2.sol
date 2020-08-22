@@ -691,7 +691,7 @@ contract UniswapexV2 is Order{
         IERC20 _inputToken,
         address payable _owner,
         bytes calldata _data,
-        bytes calldata _witnesses,
+        bytes calldata _signature,
         bytes calldata _auxData
     ) external {
         // Calculate witness using signature
@@ -699,7 +699,7 @@ contract UniswapexV2 is Order{
         // the secret
         address witness = ECDSA.recover(
             keccak256(abi.encodePacked(msg.sender)),
-            _witnesses
+            _signature
         );
 
         bytes32 key = keyOf(
