@@ -600,7 +600,7 @@ contract UniswapV2Handler is IHandler {
         (,, uint256 fee) = abi.decode(_data, (address, address, uint256));
 
         if (inputToken == weth || inputToken == UniswapexUtils.ETH_ADDRESS) {
-            if (_inputAmount < fee) {
+            if (_inputAmount <= fee) {
                  return false;
             }
 
@@ -608,14 +608,14 @@ contract UniswapV2Handler is IHandler {
         } else if (outputToken == weth || outputToken == UniswapexUtils.ETH_ADDRESS) {
             uint256 bought = _estimate(inputToken, weth, _inputAmount);
 
-            if (bought < fee) {
+            if (bought <= fee) {
                  return false;
             }
 
             return bought.sub(fee) >= _minReturn;
         } else {
             uint256 bought = _estimate(inputToken, weth, _inputAmount);
-            if (bought < fee) {
+            if (bought <= fee) {
                 return false;
             }
 
@@ -650,21 +650,21 @@ contract UniswapV2Handler is IHandler {
         uint256 bought;
 
         if (inputToken == weth || inputToken == UniswapexUtils.ETH_ADDRESS) {
-            if (_inputAmount < fee) {
+            if (_inputAmount <= fee) {
                 return (false, 0);
             }
 
             bought = _estimate(weth, outputToken, _inputAmount.sub(fee));
         } else if (outputToken == weth || outputToken == UniswapexUtils.ETH_ADDRESS) {
             bought = _estimate(inputToken, weth, _inputAmount);
-            if (bought < fee) {
+            if (bought <= fee) {
                  return (false, 0);
             }
 
             bought = bought.sub(fee);
         } else {
             bought = _estimate(inputToken, weth, _inputAmount);
-            if (bought < fee) {
+            if (bought <= fee) {
                 return (false, 0);
             }
 

@@ -133,7 +133,8 @@ contract UniswapV1Handler is IHandler, Order {
      * @return bool - Whether the execution can be handled or not
      * @return uint256 - Amount of output token bought
      */
-    function simulate(IERC20 _inputToken,
+    function simulate(
+        IERC20 _inputToken,
         IERC20 _outputToken,
         uint256 _inputAmount,
         uint256 _minReturn,
