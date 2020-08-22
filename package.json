@@ -6,7 +6,7 @@
   "scripts": {
     "build": "buidler compile",
     "postbuild": "yarn gen:contract-typings && tsc -b",
-    "test": "buidler compile && buidler test",
+    "test": "buidler clean && buidler test",
     "benchmark": "BENCHMARK=true yarn test",
     "lint": "yarn lint:ts && yarn lint:sol",
     "lint:fix": "yarn lint:ts:fix && yarn lint:sol:fix",
