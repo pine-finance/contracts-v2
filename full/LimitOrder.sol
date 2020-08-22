@@ -1,5 +1,6 @@
 
 // File: contracts/interfaces/IERC20.sol
+
 // SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;

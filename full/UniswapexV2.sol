@@ -488,7 +488,7 @@ pragma solidity ^0.6.8;
 
 
 /// @notice Core contract used to create, cancel and execute orders.
-contract UniswapexV2 is Order{
+contract UniswapexV2 is Order {
     using SafeMath for uint256;
     using Fabric for bytes32;
 
