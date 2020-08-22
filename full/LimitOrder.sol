@@ -1,6 +1,5 @@
 
 // File: contracts/interfaces/IERC20.sol
-
 // SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
@@ -86,9 +85,21 @@ interface IERC20 {
 pragma solidity ^0.6.8;
 
 
+
+
 interface IModule {
+    /// @notice receive ETH
     receive() external payable;
 
+    /**
+     * @notice Executes an order
+     * @param _inputToken - Address of the input token
+     * @param _inputAmount - uint256 of the input token amount (order amount)
+     * @param _owner - Address of the order's owner
+     * @param _data - Bytes of the order's data
+     * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
+     * @return bought - amount of output token bought
+     */
     function execute(
         IERC20 _inputToken,
         uint256 _inputAmount,
@@ -97,6 +108,14 @@ interface IModule {
         bytes calldata _auxData
     ) external returns (uint256 bought);
 
+    /**
+     * @notice Check whether an order can be executed or not
+     * @param _inputToken - Address of the input token
+     * @param _inputAmount - uint256 of the input token amount (order amount)
+     * @param _data - Bytes of the order's data
+     * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
+     * @return bool - whether the order can be executed or not
+     */
     function canExecute(
         IERC20 _inputToken,
         uint256 _inputAmount,
@@ -111,9 +130,18 @@ pragma solidity ^0.6.8;
 
 
 interface IHandler {
-
+    /// @notice receive ETH
     receive() external payable;
 
+    /**
+     * @notice Handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bought - Amount of output token bought
+     */
     function handle(
         IERC20 _inputToken,
         IERC20 _outputToken,
@@ -122,6 +150,15 @@ interface IHandler {
         bytes calldata _data
     ) external payable returns (uint256 bought);
 
+    /**
+     * @notice Check whether can handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bool - Whether the execution can be handled or not
+     */
     function canHandle(
         IERC20 _inputToken,
         IERC20 _outputToken,
@@ -135,6 +172,7 @@ interface IHandler {
 
 
 pragma solidity ^0.6.8;
+
 
 contract Order {
     address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
@@ -303,11 +341,22 @@ pragma solidity ^0.6.8;
 
 
 
+/// @notice Module used to execute limit orders create in the core contract
 contract LimitOrder is IModule, Order {
     using SafeMath for uint256;
 
+    /// @notice receive ETH
     receive() external override payable { }
 
+    /**
+     * @notice Executes an order
+     * @param _inputToken - Address of the input token
+     * @param _inputAmount - uint256 of the input token amount (order amount)
+     * @param _owner - Address of the order's owner
+     * @param _data - Bytes of the order's data
+     * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
+     * @return bought - amount of output token bought
+     */
     function execute(
         IERC20 _inputToken,
         uint256 _inputAmount,
@@ -346,6 +395,14 @@ contract LimitOrder is IModule, Order {
         return bought;
     }
 
+    /**
+     * @notice Check whether an order can be executed or not
+     * @param _inputToken - Address of the input token
+     * @param _inputAmount - uint256 of the input token amount (order amount)
+     * @param _data - Bytes of the order's data
+     * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
+     * @return bool - whether the order can be executed or not
+     */
     function canExecute(
         IERC20 _inputToken,
         uint256 _inputAmount,
@@ -373,6 +430,11 @@ contract LimitOrder is IModule, Order {
         );
     }
 
+    /**
+     * @notice Get this contract's balance of token or Ether
+     * @param _token - Address of the input token
+     * @return uint256 - this contract's balance of _token
+     */
     function _getBalance(IERC20 _token) internal view returns (uint256) {
         if (address(_token) == ETH_ADDRESS) {
             return address(this).balance;
@@ -381,6 +443,12 @@ contract LimitOrder is IModule, Order {
         }
     }
 
+    /**
+     * @notice Transfer token or Ether amount to a recipient
+     * @param _token - Address of the token
+     * @param _to - Address of the recipient
+     * @param _amount - uint256 of the amount to be transferred
+     */
     function _transferAmount(
         IERC20 _token,
         address payable _to,

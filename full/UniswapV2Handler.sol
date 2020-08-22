@@ -99,9 +99,18 @@ pragma solidity ^0.6.8;
 
 
 interface IHandler {
-
+    /// @notice receive ETH
     receive() external payable;
 
+    /**
+     * @notice Handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bought - Amount of output token bought
+     */
     function handle(
         IERC20 _inputToken,
         IERC20 _outputToken,
@@ -110,6 +119,15 @@ interface IHandler {
         bytes calldata _data
     ) external payable returns (uint256 bought);
 
+    /**
+     * @notice Check whether can handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bool - Whether the execution can be handled or not
+     */
     function canHandle(
         IERC20 _inputToken,
         IERC20 _outputToken,
@@ -426,6 +444,7 @@ pragma solidity ^0.6.8;
 
 
 
+/// @notice UniswapV2 Handler used to execute an order
 contract UniswapV2Handler is IHandler {
     using SafeMath for uint256;
 
@@ -433,144 +452,198 @@ contract UniswapV2Handler is IHandler {
     address public immutable FACTORY;
     bytes32 public immutable FACTORY_CODE_HASH;
 
+    /**
+     * @notice Creates the handler
+     * @param _factory - Address of the uniswap v2 factory contract
+     * @param _weth - Address of WETH contract
+     * @param _codeHash - Bytes32 of the uniswap v2 pair contract unit code hash
+     */
     constructor(address _factory, IWETH _weth, bytes32 _codeHash) public {
         FACTORY = _factory;
         WETH = _weth;
         FACTORY_CODE_HASH = _codeHash;
     }
 
+    /// @notice receive ETH
+    receive() external override payable {
+        require(msg.sender != tx.origin, "UniswapV2Handler#receive: NO_SEND_ETH_PLEASE");
+    }
+
+    /**
+     * @notice Handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _data - Bytes of arbitrary data
+     * @return bought - Amount of output token bought
+     */
     function handle(
-        IERC20 _fromToken,
-        IERC20 _toToken,
+        IERC20 _inputToken,
+        IERC20 _outputToken,
         uint256,
         uint256,
         bytes calldata _data
-    ) external payable override returns (uint256) {
-        address fromToken = address(_fromToken);
-        address toToken = address(_toToken);
-
-        // Load real initial balance, don't trust provided value
-        uint256 amount = UniswapexUtils.balanceOf(IERC20(fromToken), address(this));
+    ) external payable override returns (uint256 bought) {
+         // Load real initial balance, don't trust provided value
+        uint256 amount = UniswapexUtils.balanceOf(_inputToken, address(this));
+        address inputToken = address(_inputToken);
+        address outputToken = address(_outputToken);
+        address weth = address(WETH);
 
         // Decode extra data
         (,address relayer, uint256 fee) = abi.decode(_data, (address, address, uint256));
 
-        uint256 bought;
-        if (fromToken == address(WETH) || fromToken == UniswapexUtils.ETH_ADDRESS) {
-            // Swap WETH -> toToken
+        if (inputToken == weth || inputToken == UniswapexUtils.ETH_ADDRESS) {
+            // Swap WETH -> outputToken
             amount = amount.sub(fee);
 
             // Convert from ETH to WETH if necessary
-            if (fromToken == UniswapexUtils.ETH_ADDRESS) {
+            if (inputToken == UniswapexUtils.ETH_ADDRESS) {
                 WETH.deposit{ value: amount }();
-                fromToken = address(WETH);
+                inputToken = weth;
             } else {
                 WETH.withdraw(fee);
             }
 
             // Trade
-            bought = _swap(fromToken, toToken, amount, msg.sender);
-        } else if (toToken == address(WETH) || toToken == UniswapexUtils.ETH_ADDRESS) {
-            // Swap fromToken -> WETH
-            bought = _swap(fromToken, address(WETH), amount, address(this));
+            bought = _swap(inputToken, outputToken, amount, msg.sender);
+        } else if (outputToken == weth || outputToken == UniswapexUtils.ETH_ADDRESS) {
+            // Swap inputToken -> WETH
+            bought = _swap(inputToken, weth, amount, address(this));
 
             // Convert from WETH to ETH if necessary
-            if (address(toToken) == UniswapexUtils.ETH_ADDRESS) {
+            if (outputToken == UniswapexUtils.ETH_ADDRESS) {
                 WETH.withdraw(bought);
             } else {
                 WETH.withdraw(fee);
             }
 
-
             // Transfer amount to sender
             bought = bought.sub(fee);
-            UniswapexUtils.transfer(IERC20(toToken), msg.sender, bought);
+            UniswapexUtils.transfer(IERC20(outputToken), msg.sender, bought);
         } else {
-            // Swap fromToken -> WETH -> toToken
-            //  - fromToken -> WETH
-            bought = _swap(fromToken, address(WETH), amount, address(this));
+            // Swap inputToken -> WETH -> outputToken
+            //  - inputToken -> WETH
+            bought = _swap(inputToken, weth, amount, address(this));
 
             // Withdraw fee
             WETH.withdraw(fee);
 
-            // - WETH -> toToken
-            bought = _swap(address(WETH), toToken, bought.sub(fee), msg.sender);
+            // - WETH -> outputToken
+            bought = _swap(weth, outputToken, bought.sub(fee), msg.sender);
         }
 
         // Send fee to relayer
         (bool successRelayer,) = relayer.call{value: fee}("");
-        require(successRelayer, "UniswapV1Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
-
-        return bought;
+        require(successRelayer, "UniswapV2Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
     }
 
+    /**
+     * @notice Check whether can handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bool - Whether the execution can be handled or not
+     */
     function canHandle(
-        IERC20 _fromToken,
-        IERC20 _toToken,
-        uint256 _amount,
+        IERC20 _inputToken,
+        IERC20 _outputToken,
+        uint256 _inputAmount,
         uint256 _minReturn,
         bytes calldata _data
     ) external override view returns (bool) {
-        address fromToken = address(_fromToken);
-        address toToken = address(_toToken);
+        address inputToken = address(_inputToken);
+        address outputToken = address(_outputToken);
+        address weth = address(WETH);
 
         // Decode extra data
         (,, uint256 fee) = abi.decode(_data, (address, address, uint256));
 
-        if (fromToken == address(WETH) || fromToken == UniswapexUtils.ETH_ADDRESS) {
-            if (_amount < fee) return false;
-            return _estimate(address(WETH), toToken, _amount.sub(fee)) >= _minReturn;
-        } else if (toToken == address(WETH) || toToken == UniswapexUtils.ETH_ADDRESS) {
-            uint256 bought = _estimate(fromToken, address(WETH), _amount);
-            if (bought < fee) return false;
+        if (inputToken == weth || inputToken == UniswapexUtils.ETH_ADDRESS) {
+            if (_inputAmount < fee) {
+                 return false;
+            }
+
+            return _estimate(weth, outputToken, _inputAmount.sub(fee)) >= _minReturn;
+        } else if (outputToken == weth || outputToken == UniswapexUtils.ETH_ADDRESS) {
+            uint256 bought = _estimate(inputToken, weth, _inputAmount);
+
+            if (bought < fee) {
+                 return false;
+            }
+
             return bought.sub(fee) >= _minReturn;
         } else {
-            uint256 bought = _estimate(fromToken, address(WETH), _amount);
-            if (bought < fee) return false;
-            return _estimate(address(WETH), toToken, bought.sub(fee)) >= _minReturn;
+            uint256 bought = _estimate(inputToken, weth, _inputAmount);
+            if (bought < fee) {
+                return false;
+            }
+
+            return _estimate(weth, outputToken, bought.sub(fee)) >= _minReturn;
         }
     }
 
     /**
-    * @dev Simulate and return bought amount
-    */
+     * @notice Simulate an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bool - Whether the execution can be handled or not
+     * @return uint256 - Amount of output token bought
+     */
     function simulate(
-        IERC20 _fromToken,
-        IERC20 _toToken,
-        uint256 _amount,
+        IERC20 _inputToken,
+        IERC20 _outputToken,
+        uint256 _inputAmount,
         uint256 _minReturn,
         bytes calldata _data
     ) external view returns (bool, uint256) {
-        address fromToken = address(_fromToken);
-        address toToken = address(_toToken);
+        address inputToken = address(_inputToken);
+        address outputToken = address(_outputToken);
+        address weth = address(WETH);
 
         // Decode extra data
         (,, uint256 fee) = abi.decode(_data, (address, address, uint256));
 
         uint256 bought;
 
-        if (fromToken == address(WETH) || fromToken == UniswapexUtils.ETH_ADDRESS) {
-            if (_amount < fee) return (false, 0);
-            bought = _estimate(address(WETH), toToken, _amount.sub(fee));
-        } else if (toToken == address(WETH) || toToken == UniswapexUtils.ETH_ADDRESS) {
-            bought = _estimate(fromToken, address(WETH), _amount);
-            if (bought < fee) return (false, 0);
+        if (inputToken == weth || inputToken == UniswapexUtils.ETH_ADDRESS) {
+            if (_inputAmount < fee) {
+                return (false, 0);
+            }
+
+            bought = _estimate(weth, outputToken, _inputAmount.sub(fee));
+        } else if (outputToken == weth || outputToken == UniswapexUtils.ETH_ADDRESS) {
+            bought = _estimate(inputToken, weth, _inputAmount);
+            if (bought < fee) {
+                 return (false, 0);
+            }
+
             bought = bought.sub(fee);
         } else {
-            bought = _estimate(fromToken, address(WETH), _amount);
-            if (bought < fee) return (false, 0);
-            bought = _estimate(address(WETH), toToken, bought.sub(fee));
+            bought = _estimate(inputToken, weth, _inputAmount);
+            if (bought < fee) {
+                return (false, 0);
+            }
+
+            bought = _estimate(weth, outputToken, bought.sub(fee));
         }
         return (bought >= _minReturn, bought);
     }
 
-    receive() external override payable {
-        require(msg.sender != tx.origin, "UniswapV2Handler#receive: NO_SEND_ETH_PLEASE");
-    }
-
-    function _estimate(address _from, address _to, uint256 _val) internal view returns (uint256 bought) {
+    /**
+     * @notice Estimate output token amount
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @return bought - Amount of output token bought
+     */
+    function _estimate(address _inputToken, address _outputToken, uint256 _inputAmount) internal view returns (uint256 bought) {
         // Get uniswap trading pair
-        (address token0, address token1) = UniswapUtils.sortTokens(_from, _to);
+        (address token0, address token1) = UniswapUtils.sortTokens(_inputToken, _outputToken);
         IUniswapV2Pair pair = IUniswapV2Pair(UniswapUtils.pairForSorted(FACTORY, token0, token1, FACTORY_CODE_HASH));
 
         // Compute limit for uniswap trade
@@ -578,7 +651,7 @@ contract UniswapV2Handler is IHandler {
 
         // Optimal amounts for uniswap trade
         uint256 reserveIn; uint256 reserveOut;
-        if (_from == token0) {
+        if (_inputToken == token0) {
             reserveIn = reserve0;
             reserveOut = reserve1;
         } else {
@@ -586,16 +659,24 @@ contract UniswapV2Handler is IHandler {
             reserveOut = reserve0;
         }
 
-        bought = UniswapUtils.getAmountOut(_val, reserveIn, reserveOut);
+        bought = UniswapUtils.getAmountOut(_inputAmount, reserveIn, reserveOut);
     }
 
-    function _swap(address _from, address _to, uint256 _val, address _ben) internal returns (uint256 bought) {
+    /**
+     * @notice Swap input token to output token
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _recipient - Address of the recipient
+     * @return bought - Amount of output token bought
+     */
+    function _swap(address _inputToken, address _outputToken, uint256 _inputAmount, address _recipient) internal returns (uint256 bought) {
         // Get uniswap trading pair
-        (address token0, address token1) = UniswapUtils.sortTokens(_from, _to);
+        (address token0, address token1) = UniswapUtils.sortTokens(_inputToken, _outputToken);
         IUniswapV2Pair pair = IUniswapV2Pair(UniswapUtils.pairForSorted(FACTORY, token0, token1, FACTORY_CODE_HASH));
 
         // Send tokens to uniswap pair
-        require(SafeERC20.transfer(IERC20(_from), address(pair), _val), "UniswapV2Handler#_swap: ERROR_SENDING_TOKENS");
+        require(SafeERC20.transfer(IERC20(_inputToken), address(pair), _inputAmount), "UniswapV2Handler#_swap: ERROR_SENDING_TOKENS");
 
         // Get current reserves
         (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
@@ -603,25 +684,25 @@ contract UniswapV2Handler is IHandler {
         // Optimal amounts for uniswap trade
         {
             uint256 reserveIn; uint256 reserveOut;
-            if (_from == token0) {
+            if (_inputToken == token0) {
                 reserveIn = reserve0;
                 reserveOut = reserve1;
             } else {
                 reserveIn = reserve1;
                 reserveOut = reserve0;
             }
-            bought = UniswapUtils.getAmountOut(_val, reserveIn, reserveOut);
+            bought = UniswapUtils.getAmountOut(_inputAmount, reserveIn, reserveOut);
         }
 
         // Determine if output amount is token1 or token0
         uint256 amount1Out; uint256 amount0Out;
-        if (_from == token0) {
+        if (_inputToken == token0) {
             amount1Out = bought;
         } else {
             amount0Out = bought;
         }
 
         // Execute swap
-        pair.swap(amount0Out, amount1Out, _ben, bytes(""));
+        pair.swap(amount0Out, amount1Out, _recipient, bytes(""));
     }
 }

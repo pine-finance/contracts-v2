@@ -153,15 +153,6 @@ library SafeMath {
     }
 }
 
-// File: contracts/commons/Order.sol
-
-
-pragma solidity ^0.6.8;
-
-contract Order {
-    address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
-}
-
 // File: contracts/interfaces/IERC20.sol
 
 
@@ -243,15 +234,77 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
+// File: contracts/libs/SafeERC20.sol
+
+
+pragma solidity ^0.6.8;
+
+
+
+library SafeERC20 {
+    function transfer(IERC20 _token, address _to, uint256 _val) internal returns (bool) {
+        (bool success, bytes memory data) = address(_token).call(abi.encodeWithSelector(_token.transfer.selector, _to, _val));
+        return success && (data.length == 0 || abi.decode(data, (bool)));
+    }
+}
+
+// File: contracts/libs/UniswapexUtils.sol
+
+
+pragma solidity ^0.6.8;
+
+
+
+
+library UniswapexUtils {
+    address internal constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
+
+    function balanceOf(IERC20 _token, address _addr) internal view returns (uint256) {
+        if (ETH_ADDRESS == address(_token)) {
+            return _addr.balance;
+        }
+
+        return _token.balanceOf(_addr);
+    }
+
+    function transfer(IERC20 _token, address _to, uint256 _val) internal returns (bool) {
+        if (ETH_ADDRESS == address(_token)) {
+            (bool success, ) = _to.call{value:_val}("");
+            return success;
+        }
+
+        return SafeERC20.transfer(_token, _to, _val);
+    }
+}
+
+// File: contracts/commons/Order.sol
+
+
+pragma solidity ^0.6.8;
+
+
+contract Order {
+    address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
+}
+
 // File: contracts/interfaces/IHandler.sol
 
 pragma solidity ^0.6.8;
 
 
 interface IHandler {
-
+    /// @notice receive ETH
     receive() external payable;
 
+    /**
+     * @notice Handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bought - Amount of output token bought
+     */
     function handle(
         IERC20 _inputToken,
         IERC20 _outputToken,
@@ -260,6 +313,15 @@ interface IHandler {
         bytes calldata _data
     ) external payable returns (uint256 bought);
 
+    /**
+     * @notice Check whether can handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bool - Whether the execution can be handled or not
+     */
     function canHandle(
         IERC20 _inputToken,
         IERC20 _outputToken,
@@ -381,6 +443,7 @@ pragma solidity ^0.6.8;
 
 
 
+/// @notice UniswapV1 Handler used to execute an order
 contract UniswapV1Handler is IHandler, Order {
 
     using SafeMath for uint256;
@@ -389,30 +452,45 @@ contract UniswapV1Handler is IHandler, Order {
 
     UniswapFactory public immutable uniswapFactory;
 
+    /**
+     * @notice Creates the handler
+     * @param _uniswapFactory - Address of the uniswap v1 factory contract
+     */
     constructor(UniswapFactory _uniswapFactory) public {
         uniswapFactory = _uniswapFactory;
     }
 
+    /// @notice receive ETH
     receive() external override payable {
         require(msg.sender != tx.origin, "UniswapV1Handler#receive: NO_SEND_ETH_PLEASE");
     }
 
+    /**
+     * @notice Handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _data - Bytes of arbitrary data
+     * @return bought - Amount of output token bought
+     */
     function handle(
         IERC20 _inputToken,
         IERC20 _outputToken,
-        uint256 _inputAmount,
+        uint256,
         uint256,
         bytes calldata _data
     ) external payable override returns (uint256 bought) {
+        // Load real initial balance, don't trust provided value
+        uint256 inputAmount = UniswapexUtils.balanceOf(_inputToken, address(this));
+
         (,address payable relayer, uint256 fee) = abi.decode(_data, (address, address, uint256));
 
-         if (address(_inputToken) == ETH_ADDRESS) {
+        if (address(_inputToken) == ETH_ADDRESS) {
             // Keep some eth for paying the fee
-            uint256 sell = _inputAmount.sub(fee);
+            uint256 sell = inputAmount.sub(fee);
             bought = _ethToToken(uniswapFactory, _outputToken, sell, msg.sender);
         } else if (address(_outputToken) == ETH_ADDRESS) {
             // Convert
-            bought = _tokenToEth(uniswapFactory, _inputToken, _inputAmount);
+            bought = _tokenToEth(uniswapFactory, _inputToken, inputAmount);
             bought = bought.sub(fee);
 
             // Send amount bought
@@ -420,7 +498,7 @@ contract UniswapV1Handler is IHandler, Order {
             require(successSender, "UniswapV1Handler#handle: TRANSFER_ETH_TO_CALLER_FAILED");
         } else {
             // Convert from fromToken to ETH
-            uint256 boughtEth = _tokenToEth(uniswapFactory, _inputToken, _inputAmount);
+            uint256 boughtEth = _tokenToEth(uniswapFactory, _inputToken, inputAmount);
 
             // Convert from ETH to toToken
             bought = _ethToToken(uniswapFactory, _outputToken, boughtEth.sub(fee), msg.sender);
@@ -431,6 +509,15 @@ contract UniswapV1Handler is IHandler, Order {
         require(successRelayer, "UniswapV1Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
     }
 
+    /**
+     * @notice Check whether can handle an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bool - Whether the execution can be handled or not
+     */
     function canHandle(
         IERC20 _inputToken,
         IERC20 _outputToken,
@@ -469,6 +556,16 @@ contract UniswapV1Handler is IHandler, Order {
         return bought >= _minReturn;
     }
 
+    /**
+     * @notice Simulate an order execution
+     * @param _inputToken - Address of the input token
+     * @param _outputToken - Address of the output token
+     * @param _inputAmount - uint256 of the input token amount
+     * @param _minReturn - uint256 of the min return amount of output token
+     * @param _data - Bytes of arbitrary data
+     * @return bool - Whether the execution can be handled or not
+     * @return uint256 - Amount of output token bought
+     */
     function simulate(IERC20 _inputToken,
         IERC20 _outputToken,
         uint256 _inputAmount,
@@ -506,7 +603,14 @@ contract UniswapV1Handler is IHandler, Order {
         return (bought >= _minReturn, bought);
     }
 
-
+    /**
+     * @notice Trade ETH to token
+     * @param _uniswapFactory - Address of uniswap v1 factory
+     * @param _token - Address of the output token
+     * @param _amount - uint256 of the ETH amount
+     * @param _dest - Address of the trade recipient
+     * @return bought - Amount of output token bought
+     */
     function _ethToToken(
         UniswapFactory _uniswapFactory,
         IERC20 _token,
@@ -518,6 +622,13 @@ contract UniswapV1Handler is IHandler, Order {
         return uniswap.ethToTokenTransferInput{value: _amount}(1, never, _dest);
     }
 
+    /**
+     * @notice Trade token to ETH
+     * @param _uniswapFactory - Address of uniswap v1 factory
+     * @param _token - Address of the input token
+     * @param _amount - uint256 of the input token amount
+     * @return bought - Amount of ETH bought
+     */
     function _tokenToEth(
         UniswapFactory _uniswapFactory,
         IERC20 _token,
@@ -540,11 +651,25 @@ contract UniswapV1Handler is IHandler, Order {
         return uniswap.tokenToEthSwapInput(_amount, 1, never);
     }
 
+    /**
+     * @notice Simulate a ETH to token trade
+     * @param _uniswapFactory - Address of uniswap v1 factory
+     * @param _token - Address of the output token
+     * @param _amount - uint256 of the ETH amount
+     * @return bought - Amount of output token bought
+     */
     function _outEthToToken(UniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
         return _uniswapFactory.getExchange(address(_token)).getEthToTokenInputPrice(_amount);
     }
 
-    function _outTokenToEth(UniswapFactory _uniswapFactory,IERC20 _token, uint256 _amount) private view returns (uint256) {
+    /**
+     * @notice Simulate a token to ETH trade
+     * @param _uniswapFactory - Address of uniswap v1 factory
+     * @param _token - Address of the input token
+     * @param _amount - uint256 of the input token amount
+     * @return bought - Amount of ETH bought
+     */
+    function _outTokenToEth(UniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
         return _uniswapFactory.getExchange(address(_token)).getTokenToEthInputPrice(_amount);
     }
 }
