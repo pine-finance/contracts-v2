@@ -3,7 +3,7 @@
 pragma solidity ^0.6.8;
 
 
-abstract contract UniswapExchange {
+abstract contract IUniswapExchange {
     // Address of ERC20 token sold on this exchange
     function tokenAddress() external virtual view returns (address token);
     // Address of Uniswap Factory

@@ -426,9 +426,21 @@ library Fabric {
 pragma solidity ^0.6.8;
 
 
+
+
 interface IModule {
+    /// @notice receive ETH
     receive() external payable;
 
+    /**
+     * @notice Executes an order
+     * @param _inputToken - Address of the input token
+     * @param _inputAmount - uint256 of the input token amount (order amount)
+     * @param _owner - Address of the order's owner
+     * @param _data - Bytes of the order's data
+     * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
+     * @return bought - amount of output token bought
+     */
     function execute(
         IERC20 _inputToken,
         uint256 _inputAmount,
@@ -437,6 +449,14 @@ interface IModule {
         bytes calldata _auxData
     ) external returns (uint256 bought);
 
+    /**
+     * @notice Check whether an order can be executed or not
+     * @param _inputToken - Address of the input token
+     * @param _inputAmount - uint256 of the input token amount (order amount)
+     * @param _data - Bytes of the order's data
+     * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
+     * @return bool - whether the order can be executed or not
+     */
     function canExecute(
         IERC20 _inputToken,
         uint256 _inputAmount,
@@ -449,6 +469,7 @@ interface IModule {
 
 
 pragma solidity ^0.6.8;
+
 
 contract Order {
     address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
@@ -466,10 +487,15 @@ pragma solidity ^0.6.8;
 
 
 
-contract UniswapexV2 is Order{
+/// @notice Core contract used to create, cancel and execute orders.
+contract UniswapexV2 is Order {
     using SafeMath for uint256;
     using Fabric for bytes32;
 
+    // ETH orders
+    mapping(bytes32 => uint256) public ethDeposits;
+
+    // Events
     event DepositETH(
         bytes32 indexed _key,
         address indexed _caller,
@@ -497,8 +523,9 @@ contract UniswapexV2 is Order{
         uint256 _amount
     );
 
-    mapping(bytes32 => uint256) public ethDeposits;
-
+    /**
+     * @dev Prevent users to send Ether directly to this contract
+     */
     receive() external payable {
         require(
             msg.sender != tx.origin,
@@ -506,6 +533,10 @@ contract UniswapexV2 is Order{
         );
     }
 
+    /**
+     * @notice Create an order from ETH to token
+     * @param _data - Bytes of an ETH to token. See `encodeEthOrder` for more info
+     */
     function depositEth(
         bytes calldata _data
     ) external payable {
@@ -533,6 +564,15 @@ contract UniswapexV2 is Order{
         emit DepositETH(key, msg.sender, msg.value, _data);
     }
 
+    /**
+     * @notice Cancel order
+     * @dev The params should be the same used for the order creation
+     * @param _module - Address of the module to use for the order execution
+     * @param _inputToken - Address of the input token
+     * @param _owner - Address of the order's owner
+     * @param _witness - Address of the witness
+     * @param _data - Bytes of the order's data
+     */
     function cancelOrder(
         IModule _module,
         IERC20 _inputToken,
@@ -569,6 +609,20 @@ contract UniswapexV2 is Order{
         );
     }
 
+    /**
+     * @notice Get the calldata needed to create a token to token/ETH order
+     * @dev Returns the input data that the user needs to use to create the order
+     * The _secret is used to prevent a front-running at the order execution
+     * The _amount is used as the param `_value` for the ERC20 `transfer` function
+     * @param _module - Address of the module to use for the order execution
+     * @param _inputToken - Address of the input token
+     * @param _owner - Address of the order's owner
+     * @param _witness - Address of the witness
+     * @param _data - Bytes of the order's data
+     * @param _secret - Private key of the _witness
+     * @param _amount - uint256 of the order amount
+     * @return bytes - input data to send the transaction
+     */
     function encodeTokenOrder(
         IModule _module,
         IERC20 _inputToken,
@@ -599,6 +653,18 @@ contract UniswapexV2 is Order{
         );
     }
 
+    /**
+     * @notice Get the calldata needed to create a ETH to token order
+     * @dev Returns the input data that the user needs to use to create the order
+     * The _secret is used to prevent a front-running at the order execution
+     * @param _module - Address of the module to use for the order execution
+     * @param _inputToken - Address of the input token
+     * @param _owner - Address of the order's owner
+     * @param _witness - Address of the witness
+     * @param _data - Bytes of the order's data
+     * @param _secret -  Private key of the _witness
+     * @return bytes - input data to send the transaction
+     */
     function encodeEthOrder(
         address _module,
         address _inputToken,
@@ -617,6 +683,16 @@ contract UniswapexV2 is Order{
         );
     }
 
+    /**
+     * @notice Get order's properties
+     * @param _data - Bytes of the order
+     * @return module - Address of the module to use for the order execution
+     * @return inputToken - Address of the input token
+     * @return owner - Address of the order's owner
+     * @return witness - Address of the witness
+     * @return data - Bytes of the order's data
+     * @return secret -  Private key of the _witness
+     */
     function decodeOrder(
         bytes memory _data
     ) public pure returns (
@@ -647,28 +723,15 @@ contract UniswapexV2 is Order{
         );
     }
 
-    function existOrder(
-        IModule _module,
-        IERC20 _inputToken,
-        address payable _owner,
-        address _witness,
-        bytes calldata _data
-    ) external view returns (bool) {
-        bytes32 key = keyOf(
-            _module,
-            _inputToken,
-            _owner,
-            _witness,
-           _data
-        );
-
-        if (address(_inputToken) == ETH_ADDRESS) {
-            return ethDeposits[key] != 0;
-        } else {
-            return _inputToken.balanceOf(key.getVault()) != 0;
-        }
-    }
-
+    /**
+     * @notice Get the vault's address of a token to token/ETH order
+     * @param _module - Address of the module to use for the order execution
+     * @param _inputToken - Address of the input token
+     * @param _owner - Address of the order's owner
+     * @param _witness - Address of the witness
+     * @param _data - Bytes of the order's data
+     * @return address - The address of the vault
+     */
     function vaultOfOrder(
         IModule _module,
         IERC20 _inputToken,
@@ -685,7 +748,17 @@ contract UniswapexV2 is Order{
         ).getVault();
     }
 
-
+     /**
+     * @notice Executes an order
+     * @dev The sender should use the _secret to sign its own address
+     * to prevent front-runnings
+     * @param _module - Address of the module to use for the order execution
+     * @param _inputToken - Address of the input token
+     * @param _owner - Address of the order's owner
+     * @param _data - Bytes of the order's data
+     * @param _signature - Signature to calculate the witness
+     * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
+     */
     function executeOrder(
         IModule _module,
         IERC20 _inputToken,
@@ -695,8 +768,6 @@ contract UniswapexV2 is Order{
         bytes calldata _auxData
     ) external {
         // Calculate witness using signature
-        // avoid front-run by requiring msg.sender to know
-        // the secret
         address witness = ECDSA.recover(
             keccak256(abi.encodePacked(msg.sender)),
             _signature
@@ -734,6 +805,48 @@ contract UniswapexV2 is Order{
         );
     }
 
+     /**
+     * @notice Check whether an order exists or not
+     * @dev Check the balance of the order
+     * @param _module - Address of the module to use for the order execution
+     * @param _inputToken - Address of the input token
+     * @param _owner - Address of the order's owner
+     * @param _witness - Address of the witness
+     * @param _data - Bytes of the order's data
+     * @return bool - whether the order exists or not
+     */
+    function existOrder(
+        IModule _module,
+        IERC20 _inputToken,
+        address payable _owner,
+        address _witness,
+        bytes calldata _data
+    ) external view returns (bool) {
+        bytes32 key = keyOf(
+            _module,
+            _inputToken,
+            _owner,
+            _witness,
+           _data
+        );
+
+        if (address(_inputToken) == ETH_ADDRESS) {
+            return ethDeposits[key] != 0;
+        } else {
+            return _inputToken.balanceOf(key.getVault()) != 0;
+        }
+    }
+
+    /**
+     * @notice Check whether an order can be executed or not
+     * @param _module - Address of the module to use for the order execution
+     * @param _inputToken - Address of the input token
+     * @param _owner - Address of the order's owner
+     * @param _witness - Address of the witness
+     * @param _data - Bytes of the order's data
+     * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
+     * @return bool - whether the order can be executed or not
+     */
     function canExecuteOrder(
         IModule _module,
         IERC20 _inputToken,
@@ -766,6 +879,16 @@ contract UniswapexV2 is Order{
         );
     }
 
+    /**
+     * @notice Transfer the order amount to a recipient.
+     * @dev For an ETH order, the ETH will be transferred from this contract
+     * For a token order, its vault will be executed transferring the amount of tokens to
+     * the recipient
+     * @param _inputToken - Address of the input token
+     * @param _key - Order's key
+     * @param _to - Address of the recipient
+     * @return amount - amount transferred
+     */
     function _pullOrder(
         IERC20 _inputToken,
         bytes32 _key,
@@ -781,6 +904,15 @@ contract UniswapexV2 is Order{
         }
     }
 
+    /**
+     * @notice Get the order's key
+     * @param _module - Address of the module to use for the order execution
+     * @param _inputToken - Address of the input token
+     * @param _owner - Address of the order's owner
+     * @param _witness - Address of the witness
+     * @param _data - Bytes of the order's data
+     * @return bytes32 - order's key
+     */
     function keyOf(
         IModule _module,
         IERC20 _inputToken,
