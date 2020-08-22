@@ -7,9 +7,8 @@ import "../libs/UniswapexUtils.sol";
 import "../commons/Order.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IHandler.sol";
-import "../interfaces/uniswapV1/UniswapExchange.sol";
-import "../interfaces/uniswapV1/UniswapFactory.sol";
-import "../interfaces/uniswapV2/IUniswapV2Router.sol";
+import "../interfaces/uniswapV1/IUniswapExchange.sol";
+import "../interfaces/uniswapV1/IUniswapFactory.sol";
 
 /// @notice UniswapV1 Handler used to execute an order
 contract UniswapV1Handler is IHandler, Order {
@@ -18,13 +17,13 @@ contract UniswapV1Handler is IHandler, Order {
 
     uint256 private constant never = uint(-1);
 
-    UniswapFactory public immutable uniswapFactory;
+    IUniswapFactory public immutable uniswapFactory;
 
     /**
      * @notice Creates the handler
      * @param _uniswapFactory - Address of the uniswap v1 factory contract
      */
-    constructor(UniswapFactory _uniswapFactory) public {
+    constructor(IUniswapFactory _uniswapFactory) public {
         uniswapFactory = _uniswapFactory;
     }
 
@@ -180,12 +179,12 @@ contract UniswapV1Handler is IHandler, Order {
      * @return bought - Amount of output token bought
      */
     function _ethToToken(
-        UniswapFactory _uniswapFactory,
+        IUniswapFactory _uniswapFactory,
         IERC20 _token,
         uint256 _amount,
         address _dest
     ) private returns (uint256) {
-        UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+        IUniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
 
         return uniswap.ethToTokenTransferInput{value: _amount}(1, never, _dest);
     }
@@ -198,11 +197,11 @@ contract UniswapV1Handler is IHandler, Order {
      * @return bought - Amount of ETH bought
      */
     function _tokenToEth(
-        UniswapFactory _uniswapFactory,
+        IUniswapFactory _uniswapFactory,
         IERC20 _token,
         uint256 _amount
     ) private returns (uint256) {
-        UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+        IUniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
         require(address(uniswap) != address(0), "UniswapV1Handler#_tokenToEth: EXCHANGE_DOES_NOT_EXIST");
 
         // Check if previous allowance is enough and approve Uniswap if not
@@ -226,7 +225,7 @@ contract UniswapV1Handler is IHandler, Order {
      * @param _amount - uint256 of the ETH amount
      * @return bought - Amount of output token bought
      */
-    function _outEthToToken(UniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
+    function _outEthToToken(IUniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
         return _uniswapFactory.getExchange(address(_token)).getEthToTokenInputPrice(_amount);
     }
 
@@ -237,7 +236,7 @@ contract UniswapV1Handler is IHandler, Order {
      * @param _amount - uint256 of the input token amount
      * @return bought - Amount of ETH bought
      */
-    function _outTokenToEth(UniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
+    function _outTokenToEth(IUniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
         return _uniswapFactory.getExchange(address(_token)).getTokenToEthInputPrice(_amount);
     }
 }

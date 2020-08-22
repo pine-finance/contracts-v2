@@ -331,13 +331,13 @@ interface IHandler {
     ) external view returns (bool);
 }
 
-// File: contracts/interfaces/uniswapV1/UniswapExchange.sol
+// File: contracts/interfaces/uniswapV1/IUniswapExchange.sol
 
 
 pragma solidity ^0.6.8;
 
 
-abstract contract UniswapExchange {
+abstract contract IUniswapExchange {
     // Address of ERC20 token sold on this exchange
     function tokenAddress() external virtual view returns (address token);
     // Address of Uniswap Factory
@@ -384,7 +384,7 @@ abstract contract UniswapExchange {
     function setup(address token_addr) external virtual;
 }
 
-// File: contracts/interfaces/uniswapV1/UniswapFactory.sol
+// File: contracts/interfaces/uniswapV1/IUniswapFactory.sol
 
 
 pragma solidity ^0.6.8;
@@ -392,49 +392,24 @@ pragma solidity ^0.6.8;
 
 
 
-abstract contract UniswapFactory {
+abstract contract IUniswapFactory {
     // Public Variables
     address public exchangeTemplate;
     uint256 public tokenCount;
     // Create Exchange
     function createExchange(address token) external virtual returns (address exchange);
     // Get Exchange and Token Info
-    function getExchange(address token) external virtual view returns (UniswapExchange exchange);
+    function getExchange(address token) external virtual view returns (IUniswapExchange exchange);
     function getToken(address exchange) external virtual view returns (IERC20 token);
     function getTokenWithId(uint256 tokenId) external virtual view returns (address token);
     // Never use
     function initializeFactory(address template) external virtual;
 }
 
-// File: contracts/interfaces/uniswapV2/IUniswapV2Router.sol
-
-
-pragma solidity ^0.6.8;
-
-interface IUniswapV2Router {
-
-    function WETH() external pure returns (address);
-    function swapExactETHForTokens(
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external payable returns (uint[] memory amounts);
-    function swapExactTokensForETH(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
-}
-
 // File: contracts/handlers/UniswapV1Handler.sol
 
 
 pragma solidity ^0.6.8;
-
 
 
 
@@ -450,13 +425,13 @@ contract UniswapV1Handler is IHandler, Order {
 
     uint256 private constant never = uint(-1);
 
-    UniswapFactory public immutable uniswapFactory;
+    IUniswapFactory public immutable uniswapFactory;
 
     /**
      * @notice Creates the handler
      * @param _uniswapFactory - Address of the uniswap v1 factory contract
      */
-    constructor(UniswapFactory _uniswapFactory) public {
+    constructor(IUniswapFactory _uniswapFactory) public {
         uniswapFactory = _uniswapFactory;
     }
 
@@ -612,12 +587,12 @@ contract UniswapV1Handler is IHandler, Order {
      * @return bought - Amount of output token bought
      */
     function _ethToToken(
-        UniswapFactory _uniswapFactory,
+        IUniswapFactory _uniswapFactory,
         IERC20 _token,
         uint256 _amount,
         address _dest
     ) private returns (uint256) {
-        UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+        IUniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
 
         return uniswap.ethToTokenTransferInput{value: _amount}(1, never, _dest);
     }
@@ -630,11 +605,11 @@ contract UniswapV1Handler is IHandler, Order {
      * @return bought - Amount of ETH bought
      */
     function _tokenToEth(
-        UniswapFactory _uniswapFactory,
+        IUniswapFactory _uniswapFactory,
         IERC20 _token,
         uint256 _amount
     ) private returns (uint256) {
-        UniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
+        IUniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
         require(address(uniswap) != address(0), "UniswapV1Handler#_tokenToEth: EXCHANGE_DOES_NOT_EXIST");
 
         // Check if previous allowance is enough and approve Uniswap if not
@@ -658,7 +633,7 @@ contract UniswapV1Handler is IHandler, Order {
      * @param _amount - uint256 of the ETH amount
      * @return bought - Amount of output token bought
      */
-    function _outEthToToken(UniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
+    function _outEthToToken(IUniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
         return _uniswapFactory.getExchange(address(_token)).getEthToTokenInputPrice(_amount);
     }
 
@@ -669,7 +644,7 @@ contract UniswapV1Handler is IHandler, Order {
      * @param _amount - uint256 of the input token amount
      * @return bought - Amount of ETH bought
      */
-    function _outTokenToEth(UniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
+    function _outTokenToEth(IUniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
         return _uniswapFactory.getExchange(address(_token)).getTokenToEthInputPrice(_amount);
     }
 }
