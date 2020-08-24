@@ -1,6 +1,6 @@
 #! /bin/bash
 
-UNISWAPEX_V2=UniswapexV2.sol
+UNISWAPEX_V2=PineCore.sol
 LIMIT_ORDERS_MODULE=LimitOrder.sol
 UNISWAP_V1_HANDLER=UniswapV1Handler.sol
 UNISWAP_V2_HANDLER=UniswapV2Handler.sol

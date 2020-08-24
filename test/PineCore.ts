@@ -8,7 +8,7 @@ const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 const ERC20 = artifacts.require('FakeERC20')
-const UniswapexV2 = artifacts.require('UniswapexV2')
+const PineCore = artifacts.require('PineCore')
 const VaultFactory = artifacts.require('VaultFactory')
 
 
@@ -26,7 +26,7 @@ function buildCreate2Address(creatorAddress, saltHex, byteCode) {
     .slice(-40)}`.toLowerCase()
 }
 
-describe("UniswapexV2", function () {
+describe("PineCore", function () {
 
   const zeroAddress = '0x0000000000000000000000000000000000000000'
 
@@ -49,7 +49,7 @@ describe("UniswapexV2", function () {
   // Contracts
   let token1
   let vaultFactory
-  let uniswapEx
+  let pineCore
 
   beforeEach(async function () {
 
@@ -64,7 +64,7 @@ describe("UniswapexV2", function () {
     await token1.setBalance(new BN(1000000000), owner)
 
     // Deploy exchange
-    uniswapEx = await UniswapexV2.new(creationParams)
+    pineCore = await PineCore.new(creationParams)
 
     // Deploy vault
     vaultFactory = await VaultFactory.new(creationParams)
@@ -72,7 +72,7 @@ describe("UniswapexV2", function () {
 
   describe('Constructor', function () {
     it('should be depoyed', async () => {
-      const contract = await UniswapexV2.new()
+      const contract = await PineCore.new()
 
       expect(contract).to.not.be.equal(zeroAddress)
     })
@@ -93,7 +93,7 @@ describe("UniswapexV2", function () {
       )
 
       // Create order
-      const encodedOrder = await uniswapEx.encodeEthOrder(
+      const encodedOrder = await pineCore.encodeEthOrder(
         vaultFactory.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
@@ -103,17 +103,17 @@ describe("UniswapexV2", function () {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX ETH')
+      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX ETH')
       const userEtherSnap = await etherSnap(user, 'User ETH')
       const userTokenSnap = await balanceSnap(token1, user, 'User token1')
       const uniswapTokenSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap Ex Token1'
       )
 
       const value = new BN(10000)
-      const depositTx = await uniswapEx.depositEth(
+      const depositTx = await pineCore.depositEth(
         encodedOrder,
         {
           value,
@@ -129,7 +129,7 @@ describe("UniswapexV2", function () {
       await userTokenSnap.requireConstant()
 
       // Cancel order
-      const cancelTx = await uniswapEx.cancelOrder(
+      const cancelTx = await pineCore.cancelOrder(
         vaultFactory.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
@@ -171,7 +171,7 @@ describe("UniswapexV2", function () {
 
       const amount = new BN(10000)
       // Encode order transfer
-      const orderTx = await uniswapEx.encodeTokenOrder(
+      const orderTx = await pineCore.encodeTokenOrder(
         vaultFactory.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -181,7 +181,7 @@ describe("UniswapexV2", function () {
         amount                    // Tokens to sell
       )
 
-      const vaultAddress = await uniswapEx.vaultOfOrder(
+      const vaultAddress = await pineCore.vaultOfOrder(
         vaultFactory.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -206,12 +206,12 @@ describe("UniswapexV2", function () {
       // Take balance snapshots
       const vaultETHSnap = await etherSnap(vaultAddress, 'Token vault ETH')
       const vaultTokenSnap = await balanceSnap(token1, vaultAddress, 'Token vault token1')
-      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX ETH')
+      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX ETH')
       const userEtherSnap = await etherSnap(user, 'User ETH')
       const userTokenSnap = await balanceSnap(token1, user, 'User token1')
       const uniswapTokenSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap Ex Token1'
       )
 
@@ -233,7 +233,7 @@ describe("UniswapexV2", function () {
       await userTokenSnap.requireDecrease(amount)
 
       // Cancel order
-      const cancelTx = await uniswapEx.cancelOrder(
+      const cancelTx = await pineCore.cancelOrder(
         vaultFactory.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -276,7 +276,7 @@ describe("UniswapexV2", function () {
       )
 
       // Create order
-      const encodedOrder = await uniswapEx.encodeEthOrder(
+      const encodedOrder = await pineCore.encodeEthOrder(
         vaultFactory.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
@@ -286,17 +286,17 @@ describe("UniswapexV2", function () {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX ETH')
+      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX ETH')
       const userEtherSnap = await etherSnap(user, 'User ETH')
       const userTokenSnap = await balanceSnap(token1, user, 'User token1')
       const uniswapTokenSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap Ex Token1'
       )
 
       const value = new BN(10000)
-      const depositTx = await uniswapEx.depositEth(
+      const depositTx = await pineCore.depositEth(
         encodedOrder,
         {
           value,
@@ -312,7 +312,7 @@ describe("UniswapexV2", function () {
       await userTokenSnap.requireConstant()
 
       // Cancel order
-      const cancelTx = await uniswapEx.cancelOrder(
+      const cancelTx = await pineCore.cancelOrder(
         vaultFactory.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
@@ -338,7 +338,7 @@ describe("UniswapexV2", function () {
       await userEtherSnap.requireIncrease(value)
       await userTokenSnap.requireConstant()
 
-      await uniswapEx.cancelOrder(
+      await pineCore.cancelOrder(
         vaultFactory.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
@@ -372,7 +372,7 @@ describe("UniswapexV2", function () {
       )
 
       // Create order
-      const encodedOrder = await uniswapEx.encodeEthOrder(
+      const encodedOrder = await pineCore.encodeEthOrder(
         vaultFactory.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
@@ -382,7 +382,7 @@ describe("UniswapexV2", function () {
       )
 
       const value = new BN(10000)
-      await uniswapEx.depositEth(
+      await pineCore.depositEth(
         encodedOrder,
         {
           value,
@@ -391,14 +391,14 @@ describe("UniswapexV2", function () {
       )
 
       // Cancel order
-      await assertRevert(uniswapEx.cancelOrder(
+      await assertRevert(pineCore.cancelOrder(
         vaultFactory.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         witness,                      // witness
         data,                         // data
         fromOwner
-      ), 'UniswapexV2#cancelOrder: INVALID_OWNER')
+      ), 'PineCore#cancelOrder: INVALID_OWNER')
     })
   })
 

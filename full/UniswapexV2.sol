@@ -475,7 +475,7 @@ contract Order {
     address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 }
 
-// File: contracts/UniswapexV2.sol
+// File: contracts/PineCore.sol
 
 
 pragma solidity ^0.6.8;
@@ -488,7 +488,7 @@ pragma solidity ^0.6.8;
 
 
 /// @notice Core contract used to create, cancel and execute orders.
-contract UniswapexV2 is Order {
+contract PineCore is Order {
     using SafeMath for uint256;
     using Fabric for bytes32;
 
@@ -529,7 +529,7 @@ contract UniswapexV2 is Order {
     receive() external payable {
         require(
             msg.sender != tx.origin,
-            "UniswapexV2#receive: NO_SEND_ETH_PLEASE"
+            "PineCore#receive: NO_SEND_ETH_PLEASE"
         );
     }
 
@@ -540,7 +540,7 @@ contract UniswapexV2 is Order {
     function depositEth(
         bytes calldata _data
     ) external payable {
-        require(msg.value > 0, "UniswapexV2#depositEth: VALUE_IS_0");
+        require(msg.value > 0, "PineCore#depositEth: VALUE_IS_0");
 
         (
             address module,
@@ -550,7 +550,7 @@ contract UniswapexV2 is Order {
             bytes memory data,
         ) = decodeOrder(_data);
 
-        require(inputToken == ETH_ADDRESS, "UniswapexV2#depositEth: WRONG_INPUT_TOKEN");
+        require(inputToken == ETH_ADDRESS, "PineCore#depositEth: WRONG_INPUT_TOKEN");
 
         bytes32 key = keyOf(
             IModule(uint160(module)),
@@ -580,7 +580,7 @@ contract UniswapexV2 is Order {
         address _witness,
         bytes calldata _data
     ) external {
-        require(msg.sender == _owner, "UniswapexV2#cancelOrder: INVALID_OWNER");
+        require(msg.sender == _owner, "PineCore#cancelOrder: INVALID_OWNER");
         bytes32 key = keyOf(
             _module,
             _inputToken,
@@ -594,7 +594,7 @@ contract UniswapexV2 is Order {
             amount = ethDeposits[key];
             ethDeposits[key] = 0;
             (bool success,) = msg.sender.call{value: amount}("");
-            require(success, "UniswapexV2#cancelOrder: ETHER_TRANSFER_FAILED");
+            require(success, "PineCore#cancelOrder: ETHER_TRANSFER_FAILED");
         } else {
             amount = key.executeVault(_inputToken, msg.sender);
         }
@@ -783,7 +783,7 @@ contract UniswapexV2 is Order {
 
         // Pull amount
         uint256 amount = _pullOrder(_inputToken, key, address(_module));
-        require(amount > 0, "UniswapexV2#executeOrder: INVALID_ORDER");
+        require(amount > 0, "PineCore#executeOrder: INVALID_ORDER");
 
         uint256 bought = _module.execute(
             _inputToken,
@@ -898,7 +898,7 @@ contract UniswapexV2 is Order {
             amount = ethDeposits[_key];
             ethDeposits[_key] = 0;
             (bool success,) = _to.call{value: amount}("");
-            require(success, "UniswapexV2#_pullOrder: PULL_ETHER_FAILED");
+            require(success, "PineCore#_pullOrder: PULL_ETHER_FAILED");
         } else {
             amount = _key.executeVault(_inputToken, _to);
         }

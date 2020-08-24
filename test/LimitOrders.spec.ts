@@ -6,7 +6,7 @@ import { sign, toAddress } from './helpers/account'
 const BN = web3.utils.BN
 const expect = require('chai').use(require('bn-chai')(BN)).expect
 
-const UniswapEx = artifacts.require('UniswapexV2')
+const PineCore = artifacts.require('PineCore')
 const ERC20 = artifacts.require('FakeERC20')
 const WETH9 = artifacts.require('WETH9')
 const FakeUniswapFactory = artifacts.require('FakeUniswapFactory')
@@ -42,7 +42,7 @@ describe("Limit Orders Module", () => {
   let token1
   let token2
   let weth
-  let uniswapEx
+  let pineCore
   let uniswapV1Factory
   let uniswapV2Factory
   let uniswapV2Router
@@ -88,7 +88,7 @@ describe("Limit Orders Module", () => {
     await uniswapV2Factory.createPair(weth.address, token2.address)
 
     // Deploy exchange
-    uniswapEx = await UniswapEx.new(creationParams)
+    pineCore = await PineCore.new(creationParams)
 
     // Limit Orders module
     limitOrderModule = await LimitOrderModule.new(creationParams)
@@ -157,7 +157,7 @@ describe("Limit Orders Module", () => {
       const witness = toAddress(secret)
 
       // Create order
-      const encodedOrder = await uniswapEx.encodeEthOrder(
+      const encodedOrder = await pineCore.encodeEthOrder(
         limitOrderModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
@@ -172,7 +172,7 @@ describe("Limit Orders Module", () => {
         secret                            // Witness secret
       )
 
-      await uniswapEx.depositEth(
+      await pineCore.depositEth(
         encodedOrder,
         {
           value: new BN(10000),
@@ -181,7 +181,7 @@ describe("Limit Orders Module", () => {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX')
+      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX')
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswapEtherSnap = await etherSnap(uniswapToken1V1.address, 'uniswap')
       const userTokenSnap = await balanceSnap(token1, user, 'user')
@@ -195,7 +195,7 @@ describe("Limit Orders Module", () => {
       const signature = sign(anotherUser, secret)
 
       // Execute order
-      const tx = await uniswapEx.executeOrder(
+      const tx = await pineCore.executeOrder(
         limitOrderModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
@@ -232,7 +232,7 @@ describe("Limit Orders Module", () => {
       const witness = toAddress(secret)
 
       // Encode order transfer
-      const orderTx = await uniswapEx.encodeTokenOrder(
+      const orderTx = await pineCore.encodeTokenOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -248,7 +248,7 @@ describe("Limit Orders Module", () => {
         new BN(10000)                 // Tokens to sell
       )
 
-      const vaultAddress = await uniswapEx.vaultOfOrder(
+      const vaultAddress = await pineCore.vaultOfOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -279,12 +279,12 @@ describe("Limit Orders Module", () => {
       // Take balance snapshots
       const exTokenSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const exEtherSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
@@ -300,7 +300,7 @@ describe("Limit Orders Module", () => {
       const signature = sign(anotherUser, secret)
 
       // Execute order
-      const tx = await uniswapEx.executeOrder(
+      const tx = await pineCore.executeOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -338,7 +338,7 @@ describe("Limit Orders Module", () => {
       const witness = toAddress(secret)
 
       // Encode order transfer
-      const orderTx = await uniswapEx.encodeTokenOrder(
+      const orderTx = await pineCore.encodeTokenOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -354,7 +354,7 @@ describe("Limit Orders Module", () => {
         new BN(1000)                  // Tokens to sell
       )
 
-      const vaultAddress = await uniswapEx.vaultOfOrder(
+      const vaultAddress = await pineCore.vaultOfOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -387,17 +387,17 @@ describe("Limit Orders Module", () => {
       // Take balance snapshots
       const exToken1Snap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const exToken2Snap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const exEtherSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
@@ -416,7 +416,7 @@ describe("Limit Orders Module", () => {
       const signature = sign(anotherUser, secret)
 
       // Execute order
-      const tx = await uniswapEx.executeOrder(
+      const tx = await pineCore.executeOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -458,7 +458,7 @@ describe("Limit Orders Module", () => {
       const witness = toAddress(secret)
 
       // Create order
-      const encodedOrder = await uniswapEx.encodeEthOrder(
+      const encodedOrder = await pineCore.encodeEthOrder(
         limitOrderModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
@@ -473,7 +473,7 @@ describe("Limit Orders Module", () => {
         secret                            // Witness secret
       )
 
-      await uniswapEx.depositEth(
+      await pineCore.depositEth(
         encodedOrder,
         {
           value: new BN(10000),
@@ -482,7 +482,7 @@ describe("Limit Orders Module", () => {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX')
+      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX')
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswapWethSnap = await balanceSnap(weth, uniswapToken1V2, 'uniswap')
       const userTokenSnap = await balanceSnap(token1, user, 'user')
@@ -496,7 +496,7 @@ describe("Limit Orders Module", () => {
       const signature = sign(anotherUser, secret)
 
       // Execute order
-      const tx = await uniswapEx.executeOrder(
+      const tx = await pineCore.executeOrder(
         limitOrderModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
@@ -533,7 +533,7 @@ describe("Limit Orders Module", () => {
       const witness = toAddress(secret)
 
       // Encode order transfer
-      const orderTx = await uniswapEx.encodeTokenOrder(
+      const orderTx = await pineCore.encodeTokenOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -549,7 +549,7 @@ describe("Limit Orders Module", () => {
         new BN(10000)                 // Tokens to sell
       )
 
-      const vaultAddress = await uniswapEx.vaultOfOrder(
+      const vaultAddress = await pineCore.vaultOfOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -580,12 +580,12 @@ describe("Limit Orders Module", () => {
       // Take balance snapshots
       const exTokenSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const exEtherSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
@@ -601,7 +601,7 @@ describe("Limit Orders Module", () => {
       const signature = sign(anotherUser, secret)
 
       // Execute order
-      const tx = await uniswapEx.executeOrder(
+      const tx = await pineCore.executeOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -641,7 +641,7 @@ describe("Limit Orders Module", () => {
       const amount = new BN(1000)
 
       // Encode order transfer
-      const orderTx = await uniswapEx.encodeTokenOrder(
+      const orderTx = await pineCore.encodeTokenOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -657,7 +657,7 @@ describe("Limit Orders Module", () => {
         amount                        // Tokens to sell
       )
 
-      const vaultAddress = await uniswapEx.vaultOfOrder(
+      const vaultAddress = await pineCore.vaultOfOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -688,17 +688,17 @@ describe("Limit Orders Module", () => {
       // Take balance snapshots
       const exToken1Snap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const exToken2Snap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const exEtherSnap = await balanceSnap(
         token1,
-        uniswapEx.address,
+        pineCore.address,
         'Uniswap EX'
       )
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
@@ -717,7 +717,7 @@ describe("Limit Orders Module", () => {
       const signature = sign(anotherUser, secret)
 
       // Execute order
-      const tx = await uniswapEx.executeOrder(
+      const tx = await pineCore.executeOrder(
         limitOrderModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
@@ -761,7 +761,7 @@ describe("Limit Orders Module", () => {
       const witness = toAddress(secret)
 
       // Create order
-      const encodedOrder = await uniswapEx.encodeEthOrder(
+      const encodedOrder = await pineCore.encodeEthOrder(
         limitOrderModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
@@ -777,7 +777,7 @@ describe("Limit Orders Module", () => {
         secret                   // Witness secret
       )
 
-      await uniswapEx.depositEth(
+      await pineCore.depositEth(
         encodedOrder,
         {
           value: new BN(10000),
@@ -786,7 +786,7 @@ describe("Limit Orders Module", () => {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(uniswapEx.address, 'Uniswap EX')
+      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX')
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswapEtherSnap = await etherSnap(uniswapToken1V1.address, 'uniswap')
       const userTokenSnap = await balanceSnap(token1, user, 'user')
@@ -800,7 +800,7 @@ describe("Limit Orders Module", () => {
       const signature = sign(anotherUser, secret)
 
       // Execute order
-      const tx = await uniswapEx.executeOrder(
+      const tx = await pineCore.executeOrder(
         limitOrderModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
