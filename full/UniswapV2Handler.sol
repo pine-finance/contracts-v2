@@ -83,7 +83,6 @@ interface IERC20 {
 
 // File: contracts/interfaces/IWETH.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -96,7 +95,6 @@ interface IWETH is IERC20 {
 
 // File: contracts/interfaces/IHandler.sol
 
-// SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.6.8;
 
 
@@ -141,7 +139,6 @@ interface IHandler {
 
 // File: contracts/interfaces/uniswapV2/IUniswapV2Pair.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity >0.5.8;
 
@@ -182,7 +179,6 @@ interface IUniswapV2Pair {
 
 // File: contracts/libs/SafeMath.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -336,7 +332,6 @@ library SafeMath {
 
 // File: contracts/libs/UniswapUtils.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -421,7 +416,6 @@ library UniswapUtils {
 
 // File: contracts/libs/SafeERC20.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -436,7 +430,6 @@ library SafeERC20 {
 
 // File: contracts/libs/PineUtils.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -479,7 +472,6 @@ library PineUtils {
 
 // File: contracts/handlers/UniswapV2Handler.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
