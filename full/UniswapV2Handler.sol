@@ -83,6 +83,7 @@ interface IERC20 {
 
 // File: contracts/interfaces/IWETH.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -95,6 +96,7 @@ interface IWETH is IERC20 {
 
 // File: contracts/interfaces/IHandler.sol
 
+// SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.6.8;
 
 
@@ -139,6 +141,7 @@ interface IHandler {
 
 // File: contracts/interfaces/uniswapV2/IUniswapV2Pair.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity >0.5.8;
 
@@ -179,6 +182,7 @@ interface IUniswapV2Pair {
 
 // File: contracts/libs/SafeMath.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -332,6 +336,7 @@ library SafeMath {
 
 // File: contracts/libs/UniswapUtils.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -416,6 +421,7 @@ library UniswapUtils {
 
 // File: contracts/libs/SafeERC20.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -428,15 +434,16 @@ library SafeERC20 {
     }
 }
 
-// File: contracts/libs/UniswapexUtils.sol
+// File: contracts/libs/PineUtils.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
 
 
 
-library UniswapexUtils {
+library PineUtils {
     address internal constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
     /**
@@ -472,6 +479,7 @@ library UniswapexUtils {
 
 // File: contracts/handlers/UniswapV2Handler.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -523,7 +531,7 @@ contract UniswapV2Handler is IHandler {
         bytes calldata _data
     ) external payable override returns (uint256 bought) {
          // Load real initial balance, don't trust provided value
-        uint256 amount = UniswapexUtils.balanceOf(_inputToken, address(this));
+        uint256 amount = PineUtils.balanceOf(_inputToken, address(this));
         address inputToken = address(_inputToken);
         address outputToken = address(_outputToken);
         address weth = address(WETH);
@@ -531,12 +539,12 @@ contract UniswapV2Handler is IHandler {
         // Decode extra data
         (,address relayer, uint256 fee) = abi.decode(_data, (address, address, uint256));
 
-        if (inputToken == weth || inputToken == UniswapexUtils.ETH_ADDRESS) {
+        if (inputToken == weth || inputToken == PineUtils.ETH_ADDRESS) {
             // Swap WETH -> outputToken
             amount = amount.sub(fee);
 
             // Convert from ETH to WETH if necessary
-            if (inputToken == UniswapexUtils.ETH_ADDRESS) {
+            if (inputToken == PineUtils.ETH_ADDRESS) {
                 WETH.deposit{ value: amount }();
                 inputToken = weth;
             } else {
@@ -545,12 +553,12 @@ contract UniswapV2Handler is IHandler {
 
             // Trade
             bought = _swap(inputToken, outputToken, amount, msg.sender);
-        } else if (outputToken == weth || outputToken == UniswapexUtils.ETH_ADDRESS) {
+        } else if (outputToken == weth || outputToken == PineUtils.ETH_ADDRESS) {
             // Swap inputToken -> WETH
             bought = _swap(inputToken, weth, amount, address(this));
 
             // Convert from WETH to ETH if necessary
-            if (outputToken == UniswapexUtils.ETH_ADDRESS) {
+            if (outputToken == PineUtils.ETH_ADDRESS) {
                 WETH.withdraw(bought);
             } else {
                 WETH.withdraw(fee);
@@ -558,7 +566,7 @@ contract UniswapV2Handler is IHandler {
 
             // Transfer amount to sender
             bought = bought.sub(fee);
-            UniswapexUtils.transfer(IERC20(outputToken), msg.sender, bought);
+            PineUtils.transfer(IERC20(outputToken), msg.sender, bought);
         } else {
             // Swap inputToken -> WETH -> outputToken
             //  - inputToken -> WETH
@@ -599,13 +607,13 @@ contract UniswapV2Handler is IHandler {
         // Decode extra data
         (,, uint256 fee) = abi.decode(_data, (address, address, uint256));
 
-        if (inputToken == weth || inputToken == UniswapexUtils.ETH_ADDRESS) {
+        if (inputToken == weth || inputToken == PineUtils.ETH_ADDRESS) {
             if (_inputAmount <= fee) {
                  return false;
             }
 
             return _estimate(weth, outputToken, _inputAmount.sub(fee)) >= _minReturn;
-        } else if (outputToken == weth || outputToken == UniswapexUtils.ETH_ADDRESS) {
+        } else if (outputToken == weth || outputToken == PineUtils.ETH_ADDRESS) {
             uint256 bought = _estimate(inputToken, weth, _inputAmount);
 
             if (bought <= fee) {
@@ -649,13 +657,13 @@ contract UniswapV2Handler is IHandler {
 
         uint256 bought;
 
-        if (inputToken == weth || inputToken == UniswapexUtils.ETH_ADDRESS) {
+        if (inputToken == weth || inputToken == PineUtils.ETH_ADDRESS) {
             if (_inputAmount <= fee) {
                 return (false, 0);
             }
 
             bought = _estimate(weth, outputToken, _inputAmount.sub(fee));
-        } else if (outputToken == weth || outputToken == UniswapexUtils.ETH_ADDRESS) {
+        } else if (outputToken == weth || outputToken == PineUtils.ETH_ADDRESS) {
             bought = _estimate(inputToken, weth, _inputAmount);
             if (bought <= fee) {
                  return (false, 0);

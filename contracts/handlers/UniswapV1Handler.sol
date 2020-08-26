@@ -3,7 +3,7 @@
 pragma solidity ^0.6.8;
 
 import "../libs/SafeMath.sol";
-import "../libs/UniswapexUtils.sol";
+import "../libs/PineUtils.sol";
 import "../commons/Order.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IHandler.sol";
@@ -47,7 +47,7 @@ contract UniswapV1Handler is IHandler, Order {
         bytes calldata _data
     ) external payable override returns (uint256 bought) {
         // Load real initial balance, don't trust provided value
-        uint256 inputAmount = UniswapexUtils.balanceOf(_inputToken, address(this));
+        uint256 inputAmount = PineUtils.balanceOf(_inputToken, address(this));
 
         (,address payable relayer, uint256 fee) = abi.decode(_data, (address, address, uint256));
 

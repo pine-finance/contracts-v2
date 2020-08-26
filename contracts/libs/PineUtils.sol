@@ -6,7 +6,7 @@ import "../interfaces/IERC20.sol";
 import "../libs/SafeERC20.sol";
 
 
-library UniswapexUtils {
+library PineUtils {
     address internal constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 
     /**
