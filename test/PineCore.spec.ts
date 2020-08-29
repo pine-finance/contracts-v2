@@ -1,7 +1,7 @@
 import { web3, artifacts } from '@nomiclabs/buidler'
 
 import { balanceSnap, etherSnap } from './helpers/balanceSnap'
-import { sign, toAddress, ethAddress } from './helpers/account'
+import { toAddress, ethAddress } from './helpers/account'
 import assertRevert from './helpers/assertRevert'
 
 const BN = web3.utils.BN
@@ -79,14 +79,14 @@ describe('PineCore', function () {
   })
 
   describe('Deposit ETH', function () {
-    it('reverts when an account wants to send ETH directly to the contract', async () => {
+    it('reverts when sending ETH by mistake :: EOA', async () => {
       await assertRevert(
         web3.eth.sendTransaction({ from: user, to: pineCore.address, value: new BN(1) }),
         'PineCore#receive: NO_SEND_ETH_PLEASE'
       )
     })
 
-    it('reverts when an account wants to send ETH directly to the contract with data', async () => {
+    it('reverts when sending ETH by mistake with data', async () => {
       await assertRevert(
         web3.eth.sendTransaction({ from: user, to: pineCore.address, value: new BN(1), data: '0x00112412' })
       )

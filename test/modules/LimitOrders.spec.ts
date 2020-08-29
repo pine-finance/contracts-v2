@@ -5,7 +5,7 @@ import assertRevert from '../helpers/assertRevert'
 import { sign, toAddress } from '../helpers/account'
 
 const BN = web3.utils.BN
-
+const expect = require('chai').use(require('bn-chai')(BN)).expect
 
 const PineCore = artifacts.require('PineCore')
 const ERC20 = artifacts.require('FakeERC20')
@@ -16,7 +16,7 @@ const UniswapV2Factory = artifacts.require('UniswapV2Factory')
 const UniswapV2Router01 = artifacts.require('UniswapV2Router01')
 const UniswapV2Pair = artifacts.require('UniswapV2Pair')
 const UniswapExchange = artifacts.require('IUniswapExchange')
-const LimitOrderModule = artifacts.require('LimitOrders')
+const LimitOrdersModule = artifacts.require('LimitOrders')
 const UniswapV2Handler = artifacts.require('UniswapV2Handler')
 const UniswapV1Handler = artifacts.require('UniswapV1Handler')
 const HackerHandler = artifacts.require('HackerHandler')
@@ -54,7 +54,7 @@ describe("Limit Orders Module", () => {
   let uniswapToken2V1
   let uniswapToken1V2
   let uniswapToken2V2
-  let limitOrderModule
+  let limitOrdersModule
   let uniswapV2Handler
   let uniswapV1Handler
 
@@ -95,7 +95,7 @@ describe("Limit Orders Module", () => {
     pineCore = await PineCore.new(creationParams)
 
     // Limit Orders module
-    limitOrderModule = await LimitOrderModule.new(creationParams)
+    limitOrdersModule = await LimitOrdersModule.new(creationParams)
 
     // Uniswap handler
     uniswapV2Handler = await UniswapV2Handler.new(uniswapV2Factory.address, weth.address, web3.utils.soliditySha3(UniswapV2Pair._json.bytecode), creationParams)
@@ -156,20 +156,62 @@ describe("Limit Orders Module", () => {
   })
 
   describe('Module', () => {
-    it('should recover tokens if they were sent by mistake', async () => {
-      const userTokenSnap = await balanceSnap(token1, user, 'user')
+    it('should recover ETH if it was sent by mistake', async () => {
+      const userETHSnap = await etherSnap(user, 'user')
+      const limitOrdersModuleETHSnap = await etherSnap(limitOrdersModule.address, 'limit orders')
 
-      await token1.setBalance(new BN(300), user)
-      await userTokenSnap.requireIncrease(new BN(300))
+      const limitOrderBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderBalance).to.be.eq.BN(0)
 
-      await token1.transfer(limitOrderModule.address, new BN(300), { from: user })
-      await userTokenSnap.requireDecrease(new BN(300))
+      await web3.eth.sendTransaction({ from: user, to: limitOrdersModule.address, value: new BN(1), gasPrice: 0 })
+      await userETHSnap.requireDecrease(new BN(1))
+      await limitOrdersModuleETHSnap.requireIncrease(new BN(1))
 
       // Depoy handler
       const hackerHandler = await HackerHandler.new()
 
       // Execute directly because the module has tokens
-      await limitOrderModule.execute(
+      await limitOrdersModule.execute(
+        token1.address,
+        0,
+        user,
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            ethAddress,               // Buy TOKEN 1
+            new BN(1)                  // Get at least 300 Tokens
+          ]
+        ),
+        web3.eth.abi.encodeParameters(
+          ['address', 'address', 'uint256'],
+          [hackerHandler.address, anotherUser, new BN(0)]
+        ),
+        {
+          from: user,
+          gasPrice: 0
+        }
+      )
+
+      await userETHSnap.requireIncrease(new BN(1))
+      await limitOrdersModuleETHSnap.requireDecrease(new BN(1))
+    })
+
+    it('should recover tokens if they were sent by mistake', async () => {
+      const userTokenSnap = await balanceSnap(token1, user, 'user')
+      const limitOrdersModuleTokenSnap = await balanceSnap(token1, limitOrdersModule.address, 'limit orders')
+
+      await token1.setBalance(new BN(300), user)
+      await userTokenSnap.requireIncrease(new BN(300))
+
+      await token1.transfer(limitOrdersModule.address, new BN(300), { from: user })
+      await userTokenSnap.requireDecrease(new BN(300))
+      await limitOrdersModuleTokenSnap.requireIncrease(new BN(300))
+
+      // Depoy handler
+      const hackerHandler = await HackerHandler.new()
+
+      // Execute directly because the module has tokens
+      await limitOrdersModule.execute(
         ethAddress,
         0,
         user,
@@ -183,9 +225,14 @@ describe("Limit Orders Module", () => {
         web3.eth.abi.encodeParameters(
           ['address', 'address', 'uint256'],
           [hackerHandler.address, anotherUser, new BN(0)]
-        )
+        ),
+        {
+          from: user,
+          gasPrice: 0
+        }
       )
       await userTokenSnap.requireIncrease(new BN(300))
+      await limitOrdersModuleTokenSnap.requireDecrease(new BN(300))
     })
 
     it('reverts if minimum is not required', async () => {
@@ -194,7 +241,7 @@ describe("Limit Orders Module", () => {
 
       // Create order
       const encodedOrder = await pineCore.encodeEthOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
         witness,                          // Witness public address
@@ -221,7 +268,7 @@ describe("Limit Orders Module", () => {
 
       // Execute order
       await assertRevert(pineCore.executeOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -249,7 +296,7 @@ describe("Limit Orders Module", () => {
 
       // Create order
       const encodedOrder = await pineCore.encodeEthOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
         witness,                          // Witness public address
@@ -278,7 +325,7 @@ describe("Limit Orders Module", () => {
 
       // Execute order
       await assertRevert(pineCore.executeOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -306,7 +353,7 @@ describe("Limit Orders Module", () => {
 
       // Create order
       const encodedOrder = await pineCore.encodeEthOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
         witness,                          // Witness public address
@@ -335,7 +382,7 @@ describe("Limit Orders Module", () => {
 
       // Execute order
       await assertRevert(pineCore.executeOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -365,7 +412,7 @@ describe("Limit Orders Module", () => {
 
       // Create order
       const encodedOrder = await pineCore.encodeEthOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
         witness,                          // Witness public address
@@ -388,7 +435,7 @@ describe("Limit Orders Module", () => {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX')
+      const pineCoreEtherSnap = await etherSnap(pineCore.address, 'PineCore')
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswapEtherSnap = await etherSnap(uniswapToken1V1.address, 'uniswap')
       const userTokenSnap = await balanceSnap(token1, user, 'user')
@@ -398,12 +445,19 @@ describe("Limit Orders Module", () => {
         'uniswap'
       )
 
+      // Check module balances
+      let limitOrderEthBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      let limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
       // Sign signature using the secret
       const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await pineCore.executeOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -428,11 +482,18 @@ describe("Limit Orders Module", () => {
 
 
       // Validate balances
-      await exEtherSnap.requireDecrease(new BN(10000))
+      await pineCoreEtherSnap.requireDecrease(new BN(10000))
       await executerEtherSnap.requireIncrease(new BN(10))
       await uniswapEtherSnap.requireIncrease(new BN(9990))
       await userTokenSnap.requireIncrease(bought)
       await uniswapTokenSnap.requireDecrease(bought)
+
+      // Validate module balances
+      limitOrderEthBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
     })
 
     it('should execute sell tokens for ETH', async () => {
@@ -441,7 +502,7 @@ describe("Limit Orders Module", () => {
 
       // Encode order transfer
       const orderTx = await pineCore.encodeTokenOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         witness,                      // Witness address
@@ -457,7 +518,7 @@ describe("Limit Orders Module", () => {
       )
 
       const vaultAddress = await pineCore.vaultOfOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         witness,                      // Witness address
@@ -488,12 +549,12 @@ describe("Limit Orders Module", () => {
       const exTokenSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
-      const exEtherSnap = await balanceSnap(
+      const pineCoreEtherSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswapTokenSnap = await balanceSnap(
@@ -504,12 +565,20 @@ describe("Limit Orders Module", () => {
       const uniswapEtherSnap = await etherSnap(uniswapToken1V1.address, 'uniswap')
       const userTokenSnap = await etherSnap(user, 'user')
 
+      // Check module balances
+      let limitOrderEthBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      let limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
+
       // Sign signature using the secret
       const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await pineCore.executeOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -533,12 +602,20 @@ describe("Limit Orders Module", () => {
       const bought = tx.logs[0].args._bought
 
       // Validate balances
-      await exEtherSnap.requireConstant()
+      await pineCoreEtherSnap.requireConstant()
       await exTokenSnap.requireConstant()
       await executerEtherSnap.requireIncrease(new BN(15))
       await uniswapTokenSnap.requireIncrease(new BN(10000))
       await uniswapEtherSnap.requireDecrease(bought.add(new BN(15)))
       await userTokenSnap.requireIncrease(bought)
+
+      // Check module balances
+      limitOrderEthBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
     })
 
     it('Should execute tokens for tokens', async () => {
@@ -547,7 +624,7 @@ describe("Limit Orders Module", () => {
 
       // Encode order transfer
       const orderTx = await pineCore.encodeTokenOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         witness,                      // Witness address
@@ -563,7 +640,7 @@ describe("Limit Orders Module", () => {
       )
 
       const vaultAddress = await pineCore.vaultOfOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         witness,                      // Witness address
@@ -596,17 +673,17 @@ describe("Limit Orders Module", () => {
       const exToken1Snap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
       const exToken2Snap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
-      const exEtherSnap = await balanceSnap(
+      const pineCoreEtherSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswap1TokenSnap = await balanceSnap(
@@ -621,11 +698,19 @@ describe("Limit Orders Module", () => {
       )
       const userToken2Snap = await balanceSnap(token2, user, 'user')
 
+      // Check module balances
+      let limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
+      let limitOrderToken2Balance = await token2.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken2Balance).to.be.eq.BN(0)
+
+
       const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await pineCore.executeOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -649,7 +734,7 @@ describe("Limit Orders Module", () => {
       const bought = tx.logs[0].args._bought
 
       // Validate balances
-      await exEtherSnap.requireConstant()
+      await pineCoreEtherSnap.requireConstant()
       await exToken1Snap.requireConstant()
       await exToken2Snap.requireConstant()
       await vaultSnap.requireDecrease(amount)
@@ -657,6 +742,13 @@ describe("Limit Orders Module", () => {
       await uniswap1TokenSnap.requireIncrease(amount)
       await uniswap2TokenSnap.requireDecrease(bought)
       await userToken2Snap.requireIncrease(bought)
+
+      // Validate module balances
+      limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
+      limitOrderToken2Balance = await token2.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken2Balance).to.be.eq.BN(0)
     })
   })
 
@@ -667,7 +759,7 @@ describe("Limit Orders Module", () => {
 
       // Create order
       const encodedOrder = await pineCore.encodeEthOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
         witness,                          // Witness public address
@@ -690,7 +782,7 @@ describe("Limit Orders Module", () => {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX')
+      const pineCoreEtherSnap = await etherSnap(pineCore.address, 'PineCore')
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswapWethSnap = await balanceSnap(weth, uniswapToken1V2, 'uniswap')
       const userTokenSnap = await balanceSnap(token1, user, 'user')
@@ -700,12 +792,19 @@ describe("Limit Orders Module", () => {
         'uniswap'
       )
 
+      // Check module balances
+      let limitOrderEthBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      let limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
       // Sign signature using the secret
       const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await pineCore.executeOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -729,11 +828,19 @@ describe("Limit Orders Module", () => {
       const bought = tx.logs[0].args._bought
 
       // Validate balances
-      await exEtherSnap.requireDecrease(new BN(10000))
+      await pineCoreEtherSnap.requireDecrease(new BN(10000))
       await executerEtherSnap.requireIncrease(new BN(10))
       await uniswapWethSnap.requireIncrease(new BN(9990))
       await userTokenSnap.requireIncrease(bought)
       await uniswapTokenSnap.requireDecrease(bought)
+
+      // Validate module balances
+      limitOrderEthBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
     })
 
     it('should execute sell tokens for ETH', async () => {
@@ -742,7 +849,7 @@ describe("Limit Orders Module", () => {
 
       // Encode order transfer
       const orderTx = await pineCore.encodeTokenOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         witness,                      // Witness address
@@ -758,7 +865,7 @@ describe("Limit Orders Module", () => {
       )
 
       const vaultAddress = await pineCore.vaultOfOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         witness,                      // Witness address
@@ -789,12 +896,12 @@ describe("Limit Orders Module", () => {
       const exTokenSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
-      const exEtherSnap = await balanceSnap(
+      const pineCoreEtherSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswapTokenSnap = await balanceSnap(
@@ -805,12 +912,19 @@ describe("Limit Orders Module", () => {
       const uniswapWethSnap = await balanceSnap(weth, uniswapToken1V2, 'uniswap')
       const userTokenSnap = await etherSnap(user, 'user')
 
+      // Check module balances
+      let limitOrderEthBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      let limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
       // Sign signature using the secret
       const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await pineCore.executeOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -834,12 +948,20 @@ describe("Limit Orders Module", () => {
       const bought = tx.logs[0].args._bought
 
       // Validate balances
-      await exEtherSnap.requireConstant()
+      await pineCoreEtherSnap.requireConstant()
       await exTokenSnap.requireConstant()
       await executerEtherSnap.requireIncrease(new BN(15))
       await uniswapTokenSnap.requireIncrease(new BN(10000))
       await uniswapWethSnap.requireDecrease(bought.add(new BN(15)))
       await userTokenSnap.requireIncrease(bought)
+
+      // Validate module balances
+      limitOrderEthBalance = await web3.eth.getBalance(limitOrdersModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
     })
 
     it('Should execute tokens for tokens', async () => {
@@ -850,7 +972,7 @@ describe("Limit Orders Module", () => {
 
       // Encode order transfer
       const orderTx = await pineCore.encodeTokenOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         witness,                      // Witness address
@@ -866,7 +988,7 @@ describe("Limit Orders Module", () => {
       )
 
       const vaultAddress = await pineCore.vaultOfOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         witness,                      // Witness address
@@ -897,17 +1019,17 @@ describe("Limit Orders Module", () => {
       const exToken1Snap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
       const exToken2Snap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
-      const exEtherSnap = await balanceSnap(
+      const pineCoreEtherSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap EX'
+        'PineCore'
       )
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswap1TokenSnap = await balanceSnap(
@@ -922,11 +1044,19 @@ describe("Limit Orders Module", () => {
       )
       const userToken2Snap = await balanceSnap(token2, user, 'user')
 
+      // Check module balances
+      let limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
+      let limitOrderToken2Balance = await token2.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken2Balance).to.be.eq.BN(0)
+
+
       const signature = sign(anotherUser, secret)
 
       // Execute order
       const tx = await pineCore.executeOrder(
-        limitOrderModule.address,     // Limit orders module
+        limitOrdersModule.address,     // Limit orders module
         token1.address,               // Sell token 1
         user,                         // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -950,7 +1080,7 @@ describe("Limit Orders Module", () => {
       const bought = tx.logs[0].args._bought
 
       // Validate balances
-      await exEtherSnap.requireConstant()
+      await pineCoreEtherSnap.requireConstant()
       await exToken1Snap.requireConstant()
       await exToken2Snap.requireConstant()
       await vaultSnap.requireDecrease(amount)
@@ -958,6 +1088,13 @@ describe("Limit Orders Module", () => {
       await uniswap1TokenSnap.requireIncrease(amount)
       await uniswap2TokenSnap.requireDecrease(bought)
       await userToken2Snap.requireIncrease(bought)
+
+      // Validate module balances
+      limitOrderToken1Balance = await token1.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
+      limitOrderToken2Balance = await token2.balanceOf(limitOrdersModule.address)
+      expect(limitOrderToken2Balance).to.be.eq.BN(0)
     })
   })
 
@@ -970,7 +1107,7 @@ describe("Limit Orders Module", () => {
 
       // Create order
       const encodedOrder = await pineCore.encodeEthOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // ETH Address
         user,                             // Owner of the order
         witness,                          // Witness public address
@@ -994,7 +1131,7 @@ describe("Limit Orders Module", () => {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX')
+      const pineCoreEtherSnap = await etherSnap(pineCore.address, 'PineCore')
       const executerEtherSnap = await etherSnap(anotherUser, 'executer')
       const uniswapEtherSnap = await etherSnap(uniswapToken1V1.address, 'uniswap')
       const userTokenSnap = await balanceSnap(token1, user, 'user')
@@ -1009,7 +1146,7 @@ describe("Limit Orders Module", () => {
 
       // Execute order
       const tx = await pineCore.executeOrder(
-        limitOrderModule.address,         // Limit orders module
+        limitOrdersModule.address,         // Limit orders module
         ethAddress,                       // Sell ETH
         user,                             // Owner of the order
         web3.eth.abi.encodeParameters(
@@ -1034,7 +1171,7 @@ describe("Limit Orders Module", () => {
       const bought = tx.logs[0].args._bought
 
       // Validate balances
-      await exEtherSnap.requireDecrease(new BN(10000))
+      await pineCoreEtherSnap.requireDecrease(new BN(10000))
       await executerEtherSnap.requireIncrease(new BN(10))
       await uniswapEtherSnap.requireIncrease(new BN(9990))
       await userTokenSnap.requireIncrease(bought)
