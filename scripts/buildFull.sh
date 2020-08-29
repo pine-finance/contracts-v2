@@ -1,7 +1,7 @@
 #! /bin/bash
 
 PINE_CORE=PineCore.sol
-LIMIT_ORDERS_MODULE=LimitOrder.sol
+LIMIT_ORDERS_MODULE=LimitOrders.sol
 UNISWAP_V1_HANDLER=UniswapV1Handler.sol
 UNISWAP_V2_HANDLER=UniswapV2Handler.sol
 

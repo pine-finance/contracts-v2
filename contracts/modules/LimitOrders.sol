@@ -9,7 +9,7 @@ import "../libs/SafeMath.sol";
 
 
 /// @notice Module used to execute limit orders create in the core contract
-contract LimitOrder is IModule, Order {
+contract LimitOrders is IModule, Order {
     using SafeMath for uint256;
 
     /// @notice receive ETH
@@ -55,7 +55,7 @@ contract LimitOrder is IModule, Order {
         );
 
         bought = _getBalance(outputToken);
-        require(bought >= minReturn, "LimitOrder::Tokens bought are not enough");
+        require(bought >= minReturn, "LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS");
 
         _transferAmount(outputToken, _owner, bought);
 
@@ -123,7 +123,7 @@ contract LimitOrder is IModule, Order {
     ) internal {
         if (address(_token) == ETH_ADDRESS) {
             (bool success,) = _to.call{value: _amount}("");
-            require(success, "LimitOrder::Error sending ETH to the handler contract");
+            require(success, "LimitOrders#_transferAmount: ETH_TRANSFER_FAILED");
         } else {
             _token.transfer(_to, _amount);
         }

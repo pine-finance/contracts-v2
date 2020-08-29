@@ -26,7 +26,7 @@ function buildCreate2Address(creatorAddress, saltHex, byteCode) {
     .slice(-40)}`.toLowerCase()
 }
 
-describe("PineCore", function () {
+describe('PineCore', function () {
 
   const zeroAddress = '0x0000000000000000000000000000000000000000'
 
@@ -78,6 +78,21 @@ describe("PineCore", function () {
     })
   })
 
+  describe('Deposit ETH', function () {
+    it('reverts when an account wants to send ETH directly to the contract', async () => {
+      await assertRevert(
+        web3.eth.sendTransaction({ from: user, to: pineCore.address, value: new BN(1) }),
+        'PineCore#receive: NO_SEND_ETH_PLEASE'
+      )
+    })
+
+    it('reverts when an account wants to send ETH directly to the contract with data', async () => {
+      await assertRevert(
+        web3.eth.sendTransaction({ from: user, to: pineCore.address, value: new BN(1), data: '0x00112412' })
+      )
+    })
+  })
+
   describe('Cancel ETH Order', function () {
     it('should cancel an ETH order', async () => {
       const secret = web3.utils.randomHex(32)
@@ -103,13 +118,13 @@ describe("PineCore", function () {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX ETH')
+      const exEtherSnap = await etherSnap(pineCore.address, 'PIneCore ETH')
       const userEtherSnap = await etherSnap(user, 'User ETH')
       const userTokenSnap = await balanceSnap(token1, user, 'User token1')
       const uniswapTokenSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap Ex Token1'
+        'PIneCore Token1'
       )
 
       const value = new BN(10000)
@@ -206,13 +221,13 @@ describe("PineCore", function () {
       // Take balance snapshots
       const vaultETHSnap = await etherSnap(vaultAddress, 'Token vault ETH')
       const vaultTokenSnap = await balanceSnap(token1, vaultAddress, 'Token vault token1')
-      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX ETH')
+      const exEtherSnap = await etherSnap(pineCore.address, 'PIneCore ETH')
       const userEtherSnap = await etherSnap(user, 'User ETH')
       const userTokenSnap = await balanceSnap(token1, user, 'User token1')
       const uniswapTokenSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap Ex Token1'
+        'PIneCore Token1'
       )
 
       // Send tokens tx
@@ -286,13 +301,13 @@ describe("PineCore", function () {
       )
 
       // Take balance snapshots
-      const exEtherSnap = await etherSnap(pineCore.address, 'Uniswap EX ETH')
+      const exEtherSnap = await etherSnap(pineCore.address, 'PIneCore ETH')
       const userEtherSnap = await etherSnap(user, 'User ETH')
       const userTokenSnap = await balanceSnap(token1, user, 'User token1')
       const uniswapTokenSnap = await balanceSnap(
         token1,
         pineCore.address,
-        'Uniswap Ex Token1'
+        'PIneCore Token1'
       )
 
       const value = new BN(10000)

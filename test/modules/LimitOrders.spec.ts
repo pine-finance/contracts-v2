@@ -1,10 +1,11 @@
 import { web3, artifacts } from '@nomiclabs/buidler'
 
-import { balanceSnap, etherSnap } from './helpers/balanceSnap'
-import { sign, toAddress } from './helpers/account'
+import { balanceSnap, etherSnap } from '../helpers/balanceSnap'
+import assertRevert from '../helpers/assertRevert'
+import { sign, toAddress } from '../helpers/account'
 
 const BN = web3.utils.BN
-const expect = require('chai').use(require('bn-chai')(BN)).expect
+
 
 const PineCore = artifacts.require('PineCore')
 const ERC20 = artifacts.require('FakeERC20')
@@ -15,9 +16,12 @@ const UniswapV2Factory = artifacts.require('UniswapV2Factory')
 const UniswapV2Router01 = artifacts.require('UniswapV2Router01')
 const UniswapV2Pair = artifacts.require('UniswapV2Pair')
 const UniswapExchange = artifacts.require('IUniswapExchange')
-const LimitOrderModule = artifacts.require('LimitOrder')
+const LimitOrderModule = artifacts.require('LimitOrders')
 const UniswapV2Handler = artifacts.require('UniswapV2Handler')
 const UniswapV1Handler = artifacts.require('UniswapV1Handler')
+const HackerHandler = artifacts.require('HackerHandler')
+const HackerNOETHHandler = artifacts.require('HackerNOETHHandler')
+
 
 
 describe("Limit Orders Module", () => {
@@ -93,7 +97,7 @@ describe("Limit Orders Module", () => {
     // Limit Orders module
     limitOrderModule = await LimitOrderModule.new(creationParams)
 
-    // Uniswap Relayer
+    // Uniswap handler
     uniswapV2Handler = await UniswapV2Handler.new(uniswapV2Factory.address, weth.address, web3.utils.soliditySha3(UniswapV2Pair._json.bytecode), creationParams)
     uniswapV1Handler = await UniswapV1Handler.new(uniswapV1Factory.address, creationParams)
 
@@ -149,6 +153,209 @@ describe("Limit Orders Module", () => {
     uniswapToken1V2 = await uniswapV2Factory.getPair(weth.address, token1.address)
     uniswapToken2V2 = await uniswapV2Factory.getPair(weth.address, token2.address)
 
+  })
+
+  describe('Module', () => {
+    it('should recover tokens if they were sent by mistake', async () => {
+      const userTokenSnap = await balanceSnap(token1, user, 'user')
+
+      await token1.setBalance(new BN(300), user)
+      await userTokenSnap.requireIncrease(new BN(300))
+
+      await token1.transfer(limitOrderModule.address, new BN(300), { from: user })
+      await userTokenSnap.requireDecrease(new BN(300))
+
+      // Depoy handler
+      const hackerHandler = await HackerHandler.new()
+
+      // Execute directly because the module has tokens
+      await limitOrderModule.execute(
+        ethAddress,
+        0,
+        user,
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300)                  // Get at least 300 Tokens
+          ]
+        ),
+        web3.eth.abi.encodeParameters(
+          ['address', 'address', 'uint256'],
+          [hackerHandler.address, anotherUser, new BN(0)]
+        )
+      )
+      await userTokenSnap.requireIncrease(new BN(300))
+    })
+
+    it('reverts if minimum is not required', async () => {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret)
+
+      // Create order
+      const encodedOrder = await pineCore.encodeEthOrder(
+        limitOrderModule.address,         // Limit orders module
+        ethAddress,                       // ETH Address
+        user,                             // Owner of the order
+        witness,                          // Witness public address
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300)                  // Get at least 300 Tokens
+          ]
+        ),
+        secret                            // Witness secret
+      )
+
+      await pineCore.depositEth(
+        encodedOrder,
+        {
+          value: new BN(10000),
+          from: user
+        }
+      )
+
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
+
+      // Execute order
+      await assertRevert(pineCore.executeOrder(
+        limitOrderModule.address,         // Limit orders module
+        ethAddress,                       // Sell ETH
+        user,                             // Owner of the order
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300)                  // Get at least 300 Tokens
+          ]
+        ),
+        signature,                        // signature of the secret
+        web3.eth.abi.encodeParameters(
+          ['address', 'address', 'uint256'],
+          [uniswapV2Handler.address, anotherUser, new BN(8500)]
+        ),
+        {
+          from: anotherUser,
+          gasPrice: 0
+        }
+      ), 'LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS')
+    })
+
+    it('reverts if handler can not receive ETH', async () => {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret)
+
+      // Create order
+      const encodedOrder = await pineCore.encodeEthOrder(
+        limitOrderModule.address,         // Limit orders module
+        ethAddress,                       // ETH Address
+        user,                             // Owner of the order
+        witness,                          // Witness public address
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300)                  // Get at least 300 Tokens
+          ]
+        ),
+        secret                            // Witness secret
+      )
+
+      await pineCore.depositEth(
+        encodedOrder,
+        {
+          value: new BN(10000),
+          from: user
+        }
+      )
+
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
+      // Depoy handler
+      const hackerHandler = await HackerHandler.new()
+
+      // Execute order
+      await assertRevert(pineCore.executeOrder(
+        limitOrderModule.address,         // Limit orders module
+        ethAddress,                       // Sell ETH
+        user,                             // Owner of the order
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300)                  // Get at least 300 Tokens
+          ]
+        ),
+        signature,                        // signature of the secret
+        web3.eth.abi.encodeParameters(
+          ['address', 'address', 'uint256'],
+          [hackerHandler.address, anotherUser, new BN(10)]
+        ),
+        {
+          from: anotherUser,
+          gasPrice: 0
+        }
+      ), 'LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS')
+    })
+
+    it('reverts if hacker can not receive ETH', async () => {
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret)
+
+      // Create order
+      const encodedOrder = await pineCore.encodeEthOrder(
+        limitOrderModule.address,         // Limit orders module
+        ethAddress,                       // ETH Address
+        user,                             // Owner of the order
+        witness,                          // Witness public address
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300)                  // Get at least 300 Tokens
+          ]
+        ),
+        secret                            // Witness secret
+      )
+
+      await pineCore.depositEth(
+        encodedOrder,
+        {
+          value: new BN(10000),
+          from: user
+        }
+      )
+
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
+      // Depoy handler
+      const hackerNOETHHandler = await HackerNOETHHandler.new()
+
+      // Execute order
+      await assertRevert(pineCore.executeOrder(
+        limitOrderModule.address,         // Limit orders module
+        ethAddress,                       // Sell ETH
+        user,                             // Owner of the order
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            token1.address,               // Buy TOKEN 1
+            new BN(300)                  // Get at least 300 Tokens
+          ]
+        ),
+        signature,                        // signature of the secret
+        web3.eth.abi.encodeParameters(
+          ['address', 'address', 'uint256'],
+          [hackerNOETHHandler.address, anotherUser, new BN(10)]
+        ),
+        {
+          from: anotherUser,
+          gasPrice: 0
+        }
+      ), 'LimitOrders#_transferAmount: ETH_TRANSFER_FAILED')
+    })
   })
 
   describe('It should trade on Uniswap v1', () => {
@@ -218,6 +425,7 @@ describe("Limit Orders Module", () => {
       )
 
       const bought = tx.logs[0].args._bought
+
 
       // Validate balances
       await exEtherSnap.requireDecrease(new BN(10000))
