@@ -7,6 +7,7 @@ import "../interfaces/IHandler.sol";
 import "../commons/Order.sol";
 import "../libs/SafeMath.sol";
 import "../libs/SafeERC20.sol";
+import "../libs/PineUtils.sol";
 
 
 /// @notice Module used to execute limit orders create in the core contract
@@ -45,7 +46,7 @@ contract LimitOrders is IModule, Order {
         (IHandler handler) = abi.decode(_auxData, (IHandler));
 
         // Do not trust on _inputToken, it can be mismatch the real balance
-        uint256 inputAmount = _getBalance(_inputToken);
+        uint256 inputAmount = PineUtils.balanceOf(_inputToken, address(this));
         _transferAmount(_inputToken, address(handler), inputAmount);
 
         handler.handle(
@@ -56,7 +57,7 @@ contract LimitOrders is IModule, Order {
             _auxData
         );
 
-        bought = _getBalance(outputToken);
+        bought = PineUtils.balanceOf(outputToken, address(this));
         require(bought >= minReturn, "LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS");
 
         _transferAmount(outputToken, _owner, bought);
@@ -97,19 +98,6 @@ contract LimitOrders is IModule, Order {
             minReturn,
             _auxData
         );
-    }
-
-    /**
-     * @notice Get this contract's balance of token or Ether
-     * @param _token - Address of the input token
-     * @return uint256 - this contract's balance of _token
-     */
-    function _getBalance(IERC20 _token) internal view returns (uint256) {
-        if (address(_token) == ETH_ADDRESS) {
-            return address(this).balance;
-        } else {
-            return _token.balanceOf(address(this));
-        }
     }
 
     /**
