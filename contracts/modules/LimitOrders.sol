@@ -45,7 +45,7 @@ contract LimitOrders is IModule, Order {
 
         (IHandler handler) = abi.decode(_auxData, (IHandler));
 
-        // Do not trust on _inputToken, it can be mismatch the real balance
+        // Do not trust on _inputToken, it can mismatch the real balance
         uint256 inputAmount = PineUtils.balanceOf(_inputToken, address(this));
         _transferAmount(_inputToken, address(handler), inputAmount);
 
