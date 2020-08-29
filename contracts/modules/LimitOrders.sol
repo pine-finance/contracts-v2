@@ -19,7 +19,6 @@ contract LimitOrders is IModule, Order {
     /**
      * @notice Executes an order
      * @param _inputToken - Address of the input token
-     * @param _inputAmount - uint256 of the input token amount (order amount)
      * @param _owner - Address of the order's owner
      * @param _data - Bytes of the order's data
      * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
@@ -27,7 +26,7 @@ contract LimitOrders is IModule, Order {
      */
     function execute(
         IERC20 _inputToken,
-        uint256 _inputAmount,
+        uint256,
         address payable _owner,
         bytes calldata _data,
         bytes calldata _auxData
@@ -45,12 +44,14 @@ contract LimitOrders is IModule, Order {
 
         (IHandler handler) = abi.decode(_auxData, (IHandler));
 
-        _transferAmount(_inputToken, address(handler), _inputAmount);
+        // Do not trust on _inputToken, it can be mismatch the real balance
+        uint256 inputAmount = _getBalance(_inputToken);
+        _transferAmount(_inputToken, address(handler), inputAmount);
 
         handler.handle(
             _inputToken,
             outputToken,
-            _inputAmount,
+            inputAmount,
             minReturn,
             _auxData
         );
