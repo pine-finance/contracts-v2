@@ -58,8 +58,8 @@ contract PineCore is Order {
     }
 
     /**
-     * @notice Create an order from ETH to token
-     * @param _data - Bytes of an ETH to token. See `encodeEthOrder` for more info
+     * @notice Create an ETH to token order
+     * @param _data - Bytes of an ETH to token order. See `encodeEthOrder` for more info
      */
     function depositEth(
         bytes calldata _data

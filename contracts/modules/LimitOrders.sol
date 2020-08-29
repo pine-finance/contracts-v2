@@ -7,6 +7,7 @@ import "../interfaces/IHandler.sol";
 import "../commons/Order.sol";
 import "../libs/SafeMath.sol";
 import "../libs/SafeERC20.sol";
+import "../libs/PineUtils.sol";
 
 
 /// @notice Module used to execute limit orders create in the core contract
@@ -19,7 +20,6 @@ contract LimitOrders is IModule, Order {
     /**
      * @notice Executes an order
      * @param _inputToken - Address of the input token
-     * @param _inputAmount - uint256 of the input token amount (order amount)
      * @param _owner - Address of the order's owner
      * @param _data - Bytes of the order's data
      * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
@@ -27,7 +27,7 @@ contract LimitOrders is IModule, Order {
      */
     function execute(
         IERC20 _inputToken,
-        uint256 _inputAmount,
+        uint256,
         address payable _owner,
         bytes calldata _data,
         bytes calldata _auxData
@@ -45,17 +45,19 @@ contract LimitOrders is IModule, Order {
 
         (IHandler handler) = abi.decode(_auxData, (IHandler));
 
-        _transferAmount(_inputToken, address(handler), _inputAmount);
+        // Do not trust on _inputToken, it can mismatch the real balance
+        uint256 inputAmount = PineUtils.balanceOf(_inputToken, address(this));
+        _transferAmount(_inputToken, address(handler), inputAmount);
 
         handler.handle(
             _inputToken,
             outputToken,
-            _inputAmount,
+            inputAmount,
             minReturn,
             _auxData
         );
 
-        bought = _getBalance(outputToken);
+        bought = PineUtils.balanceOf(outputToken, address(this));
         require(bought >= minReturn, "LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS");
 
         _transferAmount(outputToken, _owner, bought);
@@ -96,19 +98,6 @@ contract LimitOrders is IModule, Order {
             minReturn,
             _auxData
         );
-    }
-
-    /**
-     * @notice Get this contract's balance of token or Ether
-     * @param _token - Address of the input token
-     * @return uint256 - this contract's balance of _token
-     */
-    function _getBalance(IERC20 _token) internal view returns (uint256) {
-        if (address(_token) == ETH_ADDRESS) {
-            return address(this).balance;
-        } else {
-            return _token.balanceOf(address(this));
-        }
     }
 
     /**
