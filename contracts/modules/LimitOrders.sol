@@ -6,6 +6,7 @@ import "../interfaces/IModule.sol";
 import "../interfaces/IHandler.sol";
 import "../commons/Order.sol";
 import "../libs/SafeMath.sol";
+import "../libs/SafeERC20.sol";
 
 
 /// @notice Module used to execute limit orders create in the core contract
@@ -125,7 +126,7 @@ contract LimitOrders is IModule, Order {
             (bool success,) = _to.call{value: _amount}("");
             require(success, "LimitOrders#_transferAmount: ETH_TRANSFER_FAILED");
         } else {
-            _token.transfer(_to, _amount);
+            require(SafeERC20.transfer(_token, _to, _amount), "LimitOrders#_transferAmount: TOKEN_TRANSFER_FAILED");
         }
     }
 }
