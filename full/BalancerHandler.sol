@@ -156,7 +156,6 @@ library SafeMath {
 // File: contracts/interfaces/IERC20.sol
 
 
-
 pragma solidity ^0.6.8;
 
 
@@ -238,7 +237,6 @@ interface IERC20 {
 // File: contracts/libs/SafeERC20.sol
 
 
-
 pragma solidity ^0.6.8;
 
 
@@ -251,7 +249,6 @@ library SafeERC20 {
 }
 
 // File: contracts/libs/PineUtils.sol
-
 
 
 pragma solidity ^0.6.8;
@@ -296,7 +293,6 @@ library PineUtils {
 // File: contracts/commons/Order.sol
 
 
-
 pragma solidity ^0.6.8;
 
 
@@ -305,7 +301,6 @@ contract Order {
 }
 
 // File: contracts/interfaces/IWETH.sol
-
 
 
 pragma solidity ^0.6.8;
@@ -318,7 +313,6 @@ interface IWETH is IERC20 {
 }
 
 // File: contracts/interfaces/IHandler.sol
-
 
 pragma solidity ^0.6.8;
 
@@ -363,7 +357,6 @@ interface IHandler {
 }
 
 // File: contracts/handlers/BalancerHandler.sol
-
 
 
 pragma solidity ^0.6.8;
@@ -470,19 +463,14 @@ contract BalancerHandler is IHandler, Order {
 
     /**
      * @notice Check whether can handle an order execution
-     * @param _inputToken - Address of the input token
-     * @param _outputToken - Address of the output token
-     * @param _inputAmount - uint256 of the input token amount
-     * @param _minReturn - uint256 of the min return amount of output token
-     * @param _data - Bytes of arbitrary data
      * @return bool - Whether the execution can be handled or not
      */
     function canHandle(
-        IERC20 _inputToken,
-        IERC20 _outputToken,
-        uint256 _inputAmount,
-        uint256 _minReturn,
-        bytes calldata _data
+        IERC20,
+        IERC20,
+        uint256,
+        uint256,
+        bytes calldata
     ) external override view returns (bool) {
        return false;
     }
@@ -518,7 +506,7 @@ contract BalancerHandler is IHandler, Order {
             _inputToken,
             _inputAmount,
             _outputToken,
-            never,
+            0,
             never
         );
 
