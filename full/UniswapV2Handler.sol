@@ -83,6 +83,7 @@ interface IERC20 {
 
 // File: contracts/interfaces/IWETH.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -95,6 +96,7 @@ interface IWETH is IERC20 {
 
 // File: contracts/interfaces/IHandler.sol
 
+// SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.6.8;
 
 
@@ -139,6 +141,7 @@ interface IHandler {
 
 // File: contracts/interfaces/uniswapV2/IUniswapV2Pair.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity >0.5.8;
 
@@ -179,6 +182,7 @@ interface IUniswapV2Pair {
 
 // File: contracts/libs/SafeMath.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -332,6 +336,7 @@ library SafeMath {
 
 // File: contracts/libs/UniswapUtils.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -416,6 +421,7 @@ library UniswapUtils {
 
 // File: contracts/libs/SafeERC20.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -430,6 +436,7 @@ library SafeERC20 {
 
 // File: contracts/libs/PineUtils.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -472,6 +479,7 @@ library PineUtils {
 
 // File: contracts/handlers/UniswapV2Handler.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -714,8 +722,18 @@ contract UniswapV2Handler is IHandler {
         (address token0, address token1) = UniswapUtils.sortTokens(_inputToken, _outputToken);
         IUniswapV2Pair pair = IUniswapV2Pair(UniswapUtils.pairForSorted(FACTORY, token0, token1, FACTORY_CODE_HASH));
 
+        uint256 inputAmount = _inputAmount;
+        uint256 prevPairBalance;
+        if (_inputToken != address(WETH)) {
+            prevPairBalance = PineUtils.balanceOf(IERC20(_inputToken), address(pair));
+        }
+
         // Send tokens to uniswap pair
-        require(SafeERC20.transfer(IERC20(_inputToken), address(pair), _inputAmount), "UniswapV2Handler#_swap: ERROR_SENDING_TOKENS");
+        require(SafeERC20.transfer(IERC20(_inputToken), address(pair), inputAmount), "UniswapV2Handler#_swap: ERROR_SENDING_TOKENS");
+
+        if (_inputToken != address(WETH)) {
+            inputAmount = PineUtils.balanceOf(IERC20(_inputToken), address(pair)).sub(prevPairBalance);
+        }
 
         // Get current reserves
         (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
@@ -730,7 +748,7 @@ contract UniswapV2Handler is IHandler {
                 reserveIn = reserve1;
                 reserveOut = reserve0;
             }
-            bought = UniswapUtils.getAmountOut(_inputAmount, reserveIn, reserveOut);
+            bought = UniswapUtils.getAmountOut(inputAmount, reserveIn, reserveOut);
         }
 
         // Determine if output amount is token1 or token0

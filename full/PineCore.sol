@@ -155,6 +155,7 @@ library SafeMath {
 
 // File: contracts/libs/ECDSA.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -240,6 +241,7 @@ library ECDSA {
 
 // File: contracts/interfaces/IERC20.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -321,6 +323,7 @@ interface IERC20 {
 
 // File: contracts/libs/Fabric.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -423,6 +426,7 @@ library Fabric {
 
 // File: contracts/interfaces/IModule.sol
 
+// SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.6.8;
 
 
@@ -467,6 +471,7 @@ interface IModule {
 
 // File: contracts/commons/Order.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -477,6 +482,7 @@ contract Order {
 
 // File: contracts/PineCore.sol
 
+// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -534,8 +540,8 @@ contract PineCore is Order {
     }
 
     /**
-     * @notice Create an order from ETH to token
-     * @param _data - Bytes of an ETH to token. See `encodeEthOrder` for more info
+     * @notice Create an ETH to token order
+     * @param _data - Bytes of an ETH to token order. See `encodeEthOrder` for more info
      */
     function depositEth(
         bytes calldata _data
@@ -589,15 +595,7 @@ contract PineCore is Order {
             _data
         );
 
-        uint256 amount;
-        if (address(_inputToken) == ETH_ADDRESS) {
-            amount = ethDeposits[key];
-            ethDeposits[key] = 0;
-            (bool success,) = msg.sender.call{value: amount}("");
-            require(success, "PineCore#cancelOrder: ETHER_TRANSFER_FAILED");
-        } else {
-            amount = key.executeVault(_inputToken, msg.sender);
-        }
+        uint256 amount = _pullOrder(_inputToken, key, msg.sender);
 
         emit OrderCancelled(
             key,

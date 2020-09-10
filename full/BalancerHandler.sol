@@ -155,7 +155,7 @@ library SafeMath {
 
 // File: contracts/interfaces/IERC20.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -237,7 +237,7 @@ interface IERC20 {
 
 // File: contracts/libs/SafeERC20.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -252,7 +252,7 @@ library SafeERC20 {
 
 // File: contracts/libs/PineUtils.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -295,7 +295,7 @@ library PineUtils {
 
 // File: contracts/commons/Order.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -304,9 +304,22 @@ contract Order {
     address public constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
 }
 
+// File: contracts/interfaces/IWETH.sol
+
+
+
+pragma solidity ^0.6.8;
+
+
+
+interface IWETH is IERC20 {
+    function deposit() external payable;
+    function withdraw(uint wad) external;
+}
+
 // File: contracts/interfaces/IHandler.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 pragma solidity ^0.6.8;
 
 
@@ -349,89 +362,11 @@ interface IHandler {
     ) external view returns (bool);
 }
 
-// File: contracts/interfaces/uniswapV1/IUniswapExchange.sol
+// File: contracts/handlers/BalancerHandler.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
-
-
-abstract contract IUniswapExchange {
-    // Address of ERC20 token sold on this exchange
-    function tokenAddress() external virtual view returns (address token);
-    // Address of Uniswap Factory
-    function factoryAddress() external virtual view returns (address factory);
-    // Provide Liquidity
-    function addLiquidity(uint256 min_liquidity, uint256 max_tokens, uint256 deadline) external virtual payable returns (uint256);
-    function removeLiquidity(uint256 amount, uint256 min_eth, uint256 min_tokens, uint256 deadline) external virtual returns (uint256, uint256);
-    // Get Prices
-    function getEthToTokenInputPrice(uint256 eth_sold) external virtual view returns (uint256 tokens_bought);
-    function getEthToTokenOutputPrice(uint256 tokens_bought) external virtual view returns (uint256 eth_sold);
-    function getTokenToEthInputPrice(uint256 tokens_sold) external virtual view returns (uint256 eth_bought);
-    function getTokenToEthOutputPrice(uint256 eth_bought) external virtual view returns (uint256 tokens_sold);
-    // Trade ETH to ERC20
-    function ethToTokenSwapInput(uint256 min_tokens, uint256 deadline) external virtual payable returns (uint256  tokens_bought);
-    function ethToTokenTransferInput(uint256 min_tokens, uint256 deadline, address recipient) external virtual payable returns (uint256  tokens_bought);
-    function ethToTokenSwapOutput(uint256 tokens_bought, uint256 deadline) external virtual payable returns (uint256  eth_sold);
-    function ethToTokenTransferOutput(uint256 tokens_bought, uint256 deadline, address recipient) external virtual payable returns (uint256  eth_sold);
-    // Trade ERC20 to ETH
-    function tokenToEthSwapInput(uint256 tokens_sold, uint256 min_eth, uint256 deadline) external virtual returns (uint256  eth_bought);
-    function tokenToEthTransferInput(uint256 tokens_sold, uint256 min_eth, uint256 deadline, address recipient) external virtual returns (uint256  eth_bought);
-    function tokenToEthSwapOutput(uint256 eth_bought, uint256 max_tokens, uint256 deadline) external virtual returns (uint256  tokens_sold);
-    function tokenToEthTransferOutput(uint256 eth_bought, uint256 max_tokens, uint256 deadline, address recipient) external virtual returns (uint256  tokens_sold);
-    // Trade ERC20 to ERC20
-    function tokenToTokenSwapInput(uint256 tokens_sold, uint256 min_tokens_bought, uint256 min_eth_bought, uint256 deadline, address token_addr) external virtual returns (uint256  tokens_bought);
-    function tokenToTokenTransferInput(uint256 tokens_sold, uint256 min_tokens_bought, uint256 min_eth_bought, uint256 deadline, address recipient, address token_addr) external virtual returns (uint256  tokens_bought);
-    function tokenToTokenSwapOutput(uint256 tokens_bought, uint256 max_tokens_sold, uint256 max_eth_sold, uint256 deadline, address token_addr) external virtual returns (uint256  tokens_sold);
-    function tokenToTokenTransferOutput(uint256 tokens_bought, uint256 max_tokens_sold, uint256 max_eth_sold, uint256 deadline, address recipient, address token_addr) external virtual returns (uint256  tokens_sold);
-    // Trade ERC20 to Custom Pool
-    function tokenToExchangeSwapInput(uint256 tokens_sold, uint256 min_tokens_bought, uint256 min_eth_bought, uint256 deadline, address exchange_addr) external virtual returns (uint256  tokens_bought);
-    function tokenToExchangeTransferInput(uint256 tokens_sold, uint256 min_tokens_bought, uint256 min_eth_bought, uint256 deadline, address recipient, address exchange_addr) external virtual returns (uint256  tokens_bought);
-    function tokenToExchangeSwapOutput(uint256 tokens_bought, uint256 max_tokens_sold, uint256 max_eth_sold, uint256 deadline, address exchange_addr) external virtual returns (uint256  tokens_sold);
-    function tokenToExchangeTransferOutput(uint256 tokens_bought, uint256 max_tokens_sold, uint256 max_eth_sold, uint256 deadline, address recipient, address exchange_addr) external virtual returns (uint256  tokens_sold);
-    // ERC20 comaptibility for liquidity tokens
-    bytes32 public name;
-    bytes32 public symbol;
-    uint256 public decimals;
-    function transfer(address _to, uint256 _value) external virtual returns (bool);
-    function transferFrom(address _from, address _to, uint256 value) external virtual returns (bool);
-    function approve(address _spender, uint256 _value) external virtual returns (bool);
-    function allowance(address _owner, address _spender) external virtual view returns (uint256);
-    function balanceOf(address _owner) external virtual view returns (uint256);
-    function totalSupply() external virtual view returns (uint256);
-    // Never use
-    function setup(address token_addr) external virtual;
-}
-
-// File: contracts/interfaces/uniswapV1/IUniswapFactory.sol
-
-// SPDX-License-Identifier: GPL-2.0
-
-pragma solidity ^0.6.8;
-
-
-
-
-abstract contract IUniswapFactory {
-    // Public Variables
-    address public exchangeTemplate;
-    uint256 public tokenCount;
-    // Create Exchange
-    function createExchange(address token) external virtual returns (address exchange);
-    // Get Exchange and Token Info
-    function getExchange(address token) external virtual view returns (IUniswapExchange exchange);
-    function getToken(address exchange) external virtual view returns (IERC20 token);
-    function getTokenWithId(uint256 tokenId) external virtual view returns (address token);
-    // Never use
-    function initializeFactory(address template) external virtual;
-}
-
-// File: contracts/handlers/UniswapV1Handler.sol
-
-// SPDX-License-Identifier: GPL-2.0
-
-pragma solidity ^0.6.8;
-
 
 
 
@@ -440,20 +375,24 @@ pragma solidity ^0.6.8;
 
 
 /// @notice UniswapV1 Handler used to execute an order
-contract UniswapV1Handler is IHandler, Order {
 
+interface PoolInterface {
+    function swapExactAmountIn(address, uint, address, uint, uint) external returns (uint, uint);
+}
+
+contract BalancerHandler is IHandler, Order {
     using SafeMath for uint256;
+
+    IWETH public immutable WETH;
 
     uint256 private constant never = uint(-1);
 
-    IUniswapFactory public immutable uniswapFactory;
-
     /**
      * @notice Creates the handler
-     * @param _uniswapFactory - Address of the uniswap v1 factory contract
+     * @param _weth - Address of WETH contract
      */
-    constructor(IUniswapFactory _uniswapFactory) public {
-        uniswapFactory = _uniswapFactory;
+    constructor(IWETH _weth) public {
+        WETH = _weth;
     }
 
     /// @notice receive ETH
@@ -476,33 +415,57 @@ contract UniswapV1Handler is IHandler, Order {
         bytes calldata _data
     ) external payable override returns (uint256 bought) {
         // Load real initial balance, don't trust provided value
-        uint256 inputAmount = PineUtils.balanceOf(_inputToken, address(this));
+        uint256 amount = PineUtils.balanceOf(_inputToken, address(this));
+        address inputToken = address(_inputToken);
+        address outputToken = address(_outputToken);
+        address weth = address(WETH);
 
-        (,address payable relayer, uint256 fee) = abi.decode(_data, (address, address, uint256));
+        (,address payable relayer, uint256 fee, address payable poolA, address payable poolB) =
+            abi.decode(_data, (address, address, uint256, address, address));
 
-        if (address(_inputToken) == ETH_ADDRESS) {
-            // Keep some eth for paying the fee
-            uint256 sell = inputAmount.sub(fee);
-            bought = _ethToToken(uniswapFactory, _outputToken, sell, msg.sender);
-        } else if (address(_outputToken) == ETH_ADDRESS) {
-            // Convert
-            bought = _tokenToEth(uniswapFactory, _inputToken, inputAmount);
+        if (inputToken == weth || inputToken == PineUtils.ETH_ADDRESS) {
+            // Swap WETH -> outputToken
+            amount = amount.sub(fee);
+
+            // Convert from ETH to WETH if necessary
+            if (inputToken == PineUtils.ETH_ADDRESS) {
+                WETH.deposit{ value: amount }();
+                inputToken = weth;
+            } else {
+                WETH.withdraw(fee);
+            }
+
+            // Trade
+            bought = _swap(poolA, inputToken, outputToken, amount, msg.sender);
+        } else if (outputToken == weth || outputToken == PineUtils.ETH_ADDRESS) {
+            // Swap inputToken -> WETH
+            bought = _swap(poolA, inputToken, weth, amount, address(this));
+
+            // Convert from WETH to ETH if necessary
+            if (outputToken == PineUtils.ETH_ADDRESS) {
+                WETH.withdraw(bought);
+            } else {
+                WETH.withdraw(fee);
+            }
+
+            // Transfer amount to sender
             bought = bought.sub(fee);
-
-            // Send amount bought
-            (bool successSender,) = msg.sender.call{value: bought}("");
-            require(successSender, "UniswapV1Handler#handle: TRANSFER_ETH_TO_CALLER_FAILED");
+            PineUtils.transfer(IERC20(outputToken), msg.sender, bought);
         } else {
-            // Convert from fromToken to ETH
-            uint256 boughtEth = _tokenToEth(uniswapFactory, _inputToken, inputAmount);
+            // Swap inputToken -> WETH -> outputToken
+            //  - inputToken -> WETH
+            bought = _swap(poolA, inputToken, weth, amount, address(this));
 
-            // Convert from ETH to toToken
-            bought = _ethToToken(uniswapFactory, _outputToken, boughtEth.sub(fee), msg.sender);
+            // Withdraw fee
+            WETH.withdraw(fee);
+
+            // - WETH -> outputToken
+            bought = _swap(poolB, weth, outputToken, bought.sub(fee), msg.sender);
         }
 
         // Send fee to relayer
         (bool successRelayer,) = relayer.call{value: fee}("");
-        require(successRelayer, "UniswapV1Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
+        require(successRelayer, "UniswapV2Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
     }
 
     /**
@@ -521,152 +484,46 @@ contract UniswapV1Handler is IHandler, Order {
         uint256 _minReturn,
         bytes calldata _data
     ) external override view returns (bool) {
-        (,,uint256 fee) = abi.decode(_data, (address, address, uint256));
-
-        uint256 bought;
-
-        if (address(_inputToken) == ETH_ADDRESS) {
-            if (_inputAmount <= fee) {
-                return false;
-            }
-
-            uint256 sell = _inputAmount.sub(fee);
-            bought = _outEthToToken(uniswapFactory, _outputToken, sell);
-        } else if (address(_outputToken) == ETH_ADDRESS) {
-            bought = _outTokenToEth(uniswapFactory ,_inputToken, _inputAmount);
-
-            if (bought <= fee) {
-                return false;
-            }
-
-            bought = bought.sub(fee);
-        } else {
-            uint256 boughtEth =  _outTokenToEth(uniswapFactory, _inputToken, _inputAmount);
-            if (boughtEth <= fee) {
-                return false;
-            }
-
-            bought = _outEthToToken(uniswapFactory, _outputToken, boughtEth.sub(fee));
-        }
-
-        return bought >= _minReturn;
+       return false;
     }
 
     /**
-     * @notice Simulate an order execution
+     * @notice Swap input token to output token
      * @param _inputToken - Address of the input token
      * @param _outputToken - Address of the output token
      * @param _inputAmount - uint256 of the input token amount
-     * @param _minReturn - uint256 of the min return amount of output token
-     * @param _data - Bytes of arbitrary data
-     * @return bool - Whether the execution can be handled or not
-     * @return uint256 - Amount of output token bought
+     * @param _recipient - Address of the recipient
+     * @return bought - Amount of output token bought
      */
-    function simulate(
-        IERC20 _inputToken,
-        IERC20 _outputToken,
+    function _swap(
+        address _pool,
+        address _inputToken,
+        address _outputToken,
         uint256 _inputAmount,
-        uint256 _minReturn,
-        bytes calldata _data
-    ) external view returns (bool, uint256) {
-        (,,uint256 fee) = abi.decode(_data, (address, address, uint256));
+        address _recipient
+    ) internal returns (uint256 bought) {
+        // Check if previous allowance is enough and approve the pool if not
+        IERC20 inputToken = IERC20(_inputToken);
 
-        uint256 bought;
-
-        if (address(_inputToken) == ETH_ADDRESS) {
-            if (_inputAmount <= fee) {
-                return (false, 0);
-            }
-
-            uint256 sell = _inputAmount.sub(fee);
-            bought = _outEthToToken(uniswapFactory, _outputToken, sell);
-        } else if (address(_outputToken) == ETH_ADDRESS) {
-            bought = _outTokenToEth(uniswapFactory ,_inputToken, _inputAmount);
-
-            if (bought <= fee) {
-                return (false, 0);
-            }
-
-            bought = bought.sub(fee);
-        } else {
-            uint256 boughtEth =  _outTokenToEth(uniswapFactory, _inputToken, _inputAmount);
-            if (boughtEth <= fee) {
-                return (false, 0);
-            }
-
-            bought = _outEthToToken(uniswapFactory, _outputToken, boughtEth.sub(fee));
-        }
-
-        return (bought >= _minReturn, bought);
-    }
-
-    /**
-     * @notice Trade ETH to token
-     * @param _uniswapFactory - Address of uniswap v1 factory
-     * @param _token - Address of the output token
-     * @param _amount - uint256 of the ETH amount
-     * @param _dest - Address of the trade recipient
-     * @return bought - Amount of output token bought
-     */
-    function _ethToToken(
-        IUniswapFactory _uniswapFactory,
-        IERC20 _token,
-        uint256 _amount,
-        address _dest
-    ) private returns (uint256) {
-        IUniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
-
-        return uniswap.ethToTokenTransferInput{value: _amount}(1, never, _dest);
-    }
-
-    /**
-     * @notice Trade token to ETH
-     * @param _uniswapFactory - Address of uniswap v1 factory
-     * @param _token - Address of the input token
-     * @param _amount - uint256 of the input token amount
-     * @return bought - Amount of ETH bought
-     */
-    function _tokenToEth(
-        IUniswapFactory _uniswapFactory,
-        IERC20 _token,
-        uint256 _amount
-    ) private returns (uint256) {
-        IUniswapExchange uniswap = _uniswapFactory.getExchange(address(_token));
-        require(address(uniswap) != address(0), "UniswapV1Handler#_tokenToEth: EXCHANGE_DOES_NOT_EXIST");
-
-        // Check if previous allowance is enough and approve Uniswap if not
-        uint256 prevAllowance = _token.allowance(address(this), address(uniswap));
-        if (prevAllowance < _amount) {
+        uint256 prevAllowance = inputToken.allowance(address(this), _pool);
+        if (prevAllowance < _inputAmount) {
             if (prevAllowance != 0) {
-                _token.approve(address(uniswap), 0);
+                inputToken.approve(_pool, 0);
             }
 
-            _token.approve(address(uniswap), uint(-1));
+            inputToken.approve(_pool, uint(-1));
         }
 
-        // Execute the trade
-        return uniswap.tokenToEthSwapInput(_amount, 1, never);
-    }
+        (bought,) = PoolInterface(_pool).swapExactAmountIn(
+            _inputToken,
+            _inputAmount,
+            _outputToken,
+            never,
+            never
+        );
 
-    /**
-     * @notice Simulate a ETH to token trade
-     * @param _uniswapFactory - Address of uniswap v1 factory
-     * @param _token - Address of the output token
-     * @param _amount - uint256 of the ETH amount
-     * @return bought - Amount of output token bought
-     */
-    function _outEthToToken(IUniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
-        return _uniswapFactory.getExchange(address(_token)).getEthToTokenInputPrice(_amount);
-    }
-
-    /**
-     * @notice Simulate a token to ETH trade
-     * @param _uniswapFactory - Address of uniswap v1 factory
-     * @param _token - Address of the input token
-     * @param _amount - uint256 of the input token amount
-     * @return bought - Amount of ETH bought
-     */
-    function _outTokenToEth(IUniswapFactory _uniswapFactory, IERC20 _token, uint256 _amount) private view returns (uint256) {
-        return _uniswapFactory.getExchange(address(_token)).getTokenToEthInputPrice(_amount);
+        if (_recipient != address(this)) {
+            PineUtils.transfer(IERC20(_outputToken), _recipient, bought);
+        }
     }
 }

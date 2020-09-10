@@ -8,8 +8,6 @@ import "../commons/Order.sol";
 import "../interfaces/IWETH.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IHandler.sol";
-import "../interfaces/uniswapV1/IUniswapExchange.sol";
-import "../interfaces/uniswapV1/IUniswapFactory.sol";
 
 /// @notice UniswapV1 Handler used to execute an order
 
@@ -155,7 +153,7 @@ contract BalancerHandler is IHandler, Order {
             _inputToken,
             _inputAmount,
             _outputToken,
-            never,
+            0,
             never
         );
 
