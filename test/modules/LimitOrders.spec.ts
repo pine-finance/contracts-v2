@@ -23,7 +23,7 @@ const UniswapV2Handler = artifacts.require('UniswapV2Handler')
 const UniswapV1Handler = artifacts.require('UniswapV1Handler')
 const HackerHandler = artifacts.require('HackerHandler')
 const HackerNOETHHandler = artifacts.require('HackerNOETHHandler')
-
+const LimitOrdersWithFee = artifacts.require('LimitOrdersWithFee')
 
 
 describe("Limit Orders Module", () => {
@@ -35,6 +35,7 @@ describe("Limit Orders Module", () => {
   let user
   let anotherUser
   let fromOwner
+  let feeRecipient
 
   const never = maxBn
 
@@ -72,6 +73,7 @@ describe("Limit Orders Module", () => {
     owner = accounts[1]
     user = accounts[2]
     anotherUser = accounts[3]
+    feeRecipient = accounts[9]
     fromOwner = { from: owner }
 
     // Create tokens
@@ -336,7 +338,7 @@ describe("Limit Orders Module", () => {
           from: anotherUser,
           gasPrice: 0
         }
-      ), 'LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS')
+      ), 'LimitOrders#execute: INSUFFICIENT_BOUGHT_TOKENS')
     })
 
     it('reverts if handler can not receive ETH', async () => {
@@ -393,7 +395,7 @@ describe("Limit Orders Module", () => {
           from: anotherUser,
           gasPrice: 0
         }
-      ), 'LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS')
+      ), 'LimitOrders#execute: INSUFFICIENT_BOUGHT_TOKENS')
     })
 
     it('reverts if hacker can not receive ETH', async () => {
@@ -450,7 +452,127 @@ describe("Limit Orders Module", () => {
           from: anotherUser,
           gasPrice: 0
         }
-      ), 'LimitOrders#_transferAmount: ETH_TRANSFER_FAILED')
+      ), 'LimitOrders#_transferAllBalance: ERROR_SENDING_TOKENS')
+    })
+
+    it('Should send fee to recipient', async () => {
+      const limitOrdersWithFeeModule = await LimitOrdersWithFee.new(feeRecipient)
+
+      const secret = web3.utils.randomHex(32)
+      const witness = toAddress(secret)
+
+      // Encode order transfer
+      const orderTx = await pineCore.encodeTokenOrder(
+        limitOrdersWithFeeModule.address,     // Limit orders module
+        token1.address,                       // Sell token 1
+        user,                                 // Owner of the order
+        witness,                              // Witness address
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            ethAddress,               // Buy ETH
+            new BN(50)               // Get at least 50 ETH Wei
+          ]
+        ),
+        secret,                       // Witness secret
+        new BN(10000)                 // Tokens to sell
+      )
+
+      const vaultAddress = await pineCore.vaultOfOrder(
+        limitOrdersWithFeeModule.address,     // Limit orders module
+        token1.address,               // Sell token 1
+        user,                         // Owner of the order
+        witness,                      // Witness address
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            ethAddress,               // Buy ETH
+            new BN(50)               // Get at least 50 ETH Wei
+          ]
+        )
+      )
+
+      const vaultSnap = await balanceSnap(token1, vaultAddress, 'token vault')
+
+      await token1.setBalance(new BN(10000), user)
+
+      // Send tokens tx
+      await web3.eth.sendTransaction({
+        from: user,
+        to: token1.address,
+        data: orderTx,
+        gasPrice: 0
+      })
+
+      await vaultSnap.requireIncrease(new BN(10000))
+
+      // Take balance snapshots
+      const exTokenSnap = await balanceSnap(
+        token1,
+        pineCore.address,
+        'PineCore'
+      )
+      const pineCoreEtherSnap = await balanceSnap(
+        token1,
+        pineCore.address,
+        'PineCore'
+      )
+      const executerEtherSnap = await etherSnap(anotherUser, 'executer')
+      const uniswapTokenSnap = await balanceSnap(token1, uniswapToken1V2, 'uniswap')
+      const uniswapWethSnap = await balanceSnap(weth, uniswapToken1V2, 'uniswap')
+      const userTokenSnap = await etherSnap(user, 'user')
+      const feeRecipientSnap = await balanceSnap(token1, feeRecipient, "fee recipient")
+
+      // Check module balances
+      let limitOrderEthBalance = await web3.eth.getBalance(limitOrdersWithFeeModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      let limitOrderToken1Balance = await token1.balanceOf(limitOrdersWithFeeModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
+
+      // Sign signature using the secret
+      const signature = sign(anotherUser, secret)
+
+      // Execute order
+      const tx = await pineCore.executeOrder(
+        limitOrdersWithFeeModule.address,     // Limit orders module
+        token1.address,               // Sell token 1
+        user,                         // Owner of the order
+        web3.eth.abi.encodeParameters(
+          ['address', 'uint256'],
+          [
+            ethAddress,               // Buy ETH
+            new BN(50)               // Get at least 50 ETH Wei
+          ]
+        ),
+        signature,                    // signature, sender signed using the secret
+        web3.eth.abi.encodeParameters(
+          ['address', 'address', 'uint256'],
+          [uniswapV2Handler.address, anotherUser, new BN(15)]
+        ),
+        {
+          from: anotherUser,
+          gasPrice: 0
+        }
+      )
+
+      const bought = tx.logs[0].args._bought
+
+      // Validate balances
+      await pineCoreEtherSnap.requireConstant()
+      await exTokenSnap.requireConstant()
+      await executerEtherSnap.requireIncrease(15)
+      await uniswapTokenSnap.requireIncrease(9970)
+      await uniswapWethSnap.requireDecrease(bought.add(new BN(15)))
+      await userTokenSnap.requireIncrease(bought)
+      await feeRecipientSnap.requireIncrease(30)
+
+      // Validate module balances
+      limitOrderEthBalance = await web3.eth.getBalance(limitOrdersWithFeeModule.address)
+      expect(limitOrderEthBalance).to.be.eq.BN(0)
+
+      limitOrderToken1Balance = await token1.balanceOf(limitOrdersWithFeeModule.address)
+      expect(limitOrderToken1Balance).to.be.eq.BN(0)
     })
   })
 
