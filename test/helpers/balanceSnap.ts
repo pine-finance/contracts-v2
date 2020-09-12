@@ -38,7 +38,7 @@ export async function balanceSnap(token: any, address: string, account: string =
       const realdecrease = snapBalance.sub(await token.balanceOf(address))
       const expectedBalance = snapBalance.sub(bn(delta))
       expect(
-        snapBalance.sub(b(delta)),
+        snapBalance.sub(bn(delta)),
         `${account} should decrease by ${delta} - but decreased by ${realdecrease}`
       ).to.eq.BN(
         await token.balanceOf(address)
@@ -79,7 +79,7 @@ export async function etherSnap(address: string, account: string = "") {
       const realdecrease = snapBalance.sub(new BN(await web3.eth.getBalance(address)))
       const expectedBalance = snapBalance.sub(bn(delta))
       expect(
-        snapBalance.sub(b(delta)),
+        snapBalance.sub(bn(delta)),
         `${account} should decrease by ${delta} - but decreased by ${realdecrease}`
       ).to.eq.BN(
         new BN(await web3.eth.getBalance(address))

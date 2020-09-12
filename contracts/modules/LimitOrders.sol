@@ -27,7 +27,7 @@ contract LimitOrders is IModule, Order {
      */
     function execute(
         IERC20 _inputToken,
-        uint256,
+        uint256 _inputAmount,
         address payable _owner,
         bytes calldata _data,
         bytes calldata _auxData
@@ -46,8 +46,7 @@ contract LimitOrders is IModule, Order {
         (IHandler handler) = abi.decode(_auxData, (IHandler));
 
         // Do not trust on _inputToken, it can mismatch the real balance
-        uint256 inputAmount = PineUtils.balanceOf(_inputToken, address(this));
-        _transferAmount(_inputToken, address(handler), inputAmount);
+        uint256 inputAmount = _transferAllBalance(_inputToken, address(handler), _inputAmount);
 
         handler.handle(
             _inputToken,
@@ -58,9 +57,8 @@ contract LimitOrders is IModule, Order {
         );
 
         bought = PineUtils.balanceOf(outputToken, address(this));
-        require(bought >= minReturn, "LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS");
-
-        _transferAmount(outputToken, _owner, bought);
+        require(bought >= minReturn, "LimitOrders#execute: INSUFFICIENT_BOUGHT_TOKENS");
+        require(_transferAmount(outputToken, _owner, bought), "LimitOrders#execute: ERROR_SENDING_BOUGHT_TOKENS");
 
         return bought;
     }
@@ -78,7 +76,7 @@ contract LimitOrders is IModule, Order {
         uint256 _inputAmount,
         bytes calldata _data,
         bytes calldata _auxData
-    ) external override view returns (bool) {
+    ) external override virtual view returns (bool) {
          (
             IERC20 outputToken,
             uint256 minReturn
@@ -110,12 +108,35 @@ contract LimitOrders is IModule, Order {
         IERC20 _token,
         address payable _to,
         uint256 _amount
-    ) internal {
+    ) internal returns (bool) {
         if (address(_token) == ETH_ADDRESS) {
             (bool success,) = _to.call{value: _amount}("");
-            require(success, "LimitOrders#_transferAmount: ETH_TRANSFER_FAILED");
+            return success;
         } else {
-            require(SafeERC20.transfer(_token, _to, _amount), "LimitOrders#_transferAmount: TOKEN_TRANSFER_FAILED");
+            return SafeERC20.transfer(_token, _to, _amount);
         }
+    }
+
+    /**
+     * @notice Transfers tokens to a recipient it tries to transfer the requested amount, if it fails it transfers everything
+     * @param _token - Address of the token to transfer
+     * @param _to - Address of the recipient
+     * @param _amount - Tentative amount to be transfered
+     * @return uint256 - The final number of transfered tokens
+     */
+    function _transferAllBalance(
+        IERC20 _token,
+        address payable _to,
+        uint256 _amount
+    ) internal virtual returns (uint256) {
+        // Try to transfer requested amount
+        if (_transferAmount(_token, _to, _amount)) {
+            return _amount;
+        }
+
+        // Fallback to read actual current balance
+        uint256 balance = PineUtils.balanceOf(_token, address(this));
+        require(_transferAmount(_token, _to, balance), "LimitOrders#_transferAllBalance: ERROR_SENDING_TOKENS");
+        return balance;
     }
 }
