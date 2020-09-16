@@ -83,6 +83,7 @@ interface IERC20 {
 
 // File: contracts/interfaces/IModule.sol
 
+
 pragma solidity ^0.6.8;
 
 
@@ -126,6 +127,7 @@ interface IModule {
 }
 
 // File: contracts/interfaces/IHandler.sol
+
 
 pragma solidity ^0.6.8;
 
@@ -172,6 +174,7 @@ interface IHandler {
 // File: contracts/commons/Order.sol
 
 
+
 pragma solidity ^0.6.8;
 
 
@@ -180,6 +183,7 @@ contract Order {
 }
 
 // File: contracts/libs/SafeMath.sol
+
 
 
 pragma solidity ^0.6.8;
@@ -332,10 +336,71 @@ library SafeMath {
     }
 }
 
-// File: contracts/modules/LimitOrders.sol
+// File: contracts/libs/SafeERC20.sol
+
 
 
 pragma solidity ^0.6.8;
+
+
+
+library SafeERC20 {
+    function transfer(IERC20 _token, address _to, uint256 _val) internal returns (bool) {
+        (bool success, bytes memory data) = address(_token).call(abi.encodeWithSelector(_token.transfer.selector, _to, _val));
+        return success && (data.length == 0 || abi.decode(data, (bool)));
+    }
+}
+
+// File: contracts/libs/PineUtils.sol
+
+
+
+pragma solidity ^0.6.8;
+
+
+
+
+library PineUtils {
+    address internal constant ETH_ADDRESS = address(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
+
+    /**
+     * @notice Get the account's balance of token or ETH
+     * @param _token - Address of the token
+     * @param _addr - Address of the account
+     * @return uint256 - Account's balance of token or ETH
+     */
+    function balanceOf(IERC20 _token, address _addr) internal view returns (uint256) {
+        if (ETH_ADDRESS == address(_token)) {
+            return _addr.balance;
+        }
+
+        return _token.balanceOf(_addr);
+    }
+
+     /**
+     * @notice Transfer token or ETH to a destinatary
+     * @param _token - Address of the token
+     * @param _to - Address of the recipient
+     * @param _val - Uint256 of the amount to transfer
+     * @return bool - Whether the transfer was success or not
+     */
+    function transfer(IERC20 _token, address _to, uint256 _val) internal returns (bool) {
+        if (ETH_ADDRESS == address(_token)) {
+            (bool success, ) = _to.call{value:_val}("");
+            return success;
+        }
+
+        return SafeERC20.transfer(_token, _to, _val);
+    }
+}
+
+// File: contracts/modules/LimitOrders.sol
+
+
+
+pragma solidity ^0.6.8;
+
+
 
 
 
@@ -352,7 +417,6 @@ contract LimitOrders is IModule, Order {
     /**
      * @notice Executes an order
      * @param _inputToken - Address of the input token
-     * @param _inputAmount - uint256 of the input token amount (order amount)
      * @param _owner - Address of the order's owner
      * @param _data - Bytes of the order's data
      * @param _auxData - Bytes of the auxiliar data used for the handlers to execute the order
@@ -360,7 +424,7 @@ contract LimitOrders is IModule, Order {
      */
     function execute(
         IERC20 _inputToken,
-        uint256 _inputAmount,
+        uint256,
         address payable _owner,
         bytes calldata _data,
         bytes calldata _auxData
@@ -378,17 +442,19 @@ contract LimitOrders is IModule, Order {
 
         (IHandler handler) = abi.decode(_auxData, (IHandler));
 
-        _transferAmount(_inputToken, address(handler), _inputAmount);
+        // Do not trust on _inputToken, it can mismatch the real balance
+        uint256 inputAmount = PineUtils.balanceOf(_inputToken, address(this));
+        _transferAmount(_inputToken, address(handler), inputAmount);
 
         handler.handle(
             _inputToken,
             outputToken,
-            _inputAmount,
+            inputAmount,
             minReturn,
             _auxData
         );
 
-        bought = _getBalance(outputToken);
+        bought = PineUtils.balanceOf(outputToken, address(this));
         require(bought >= minReturn, "LimitOrders#execute: ISSUFICIENT_BOUGHT_TOKENS");
 
         _transferAmount(outputToken, _owner, bought);
@@ -432,19 +498,6 @@ contract LimitOrders is IModule, Order {
     }
 
     /**
-     * @notice Get this contract's balance of token or Ether
-     * @param _token - Address of the input token
-     * @return uint256 - this contract's balance of _token
-     */
-    function _getBalance(IERC20 _token) internal view returns (uint256) {
-        if (address(_token) == ETH_ADDRESS) {
-            return address(this).balance;
-        } else {
-            return _token.balanceOf(address(this));
-        }
-    }
-
-    /**
      * @notice Transfer token or Ether amount to a recipient
      * @param _token - Address of the token
      * @param _to - Address of the recipient
@@ -459,7 +512,7 @@ contract LimitOrders is IModule, Order {
             (bool success,) = _to.call{value: _amount}("");
             require(success, "LimitOrders#_transferAmount: ETH_TRANSFER_FAILED");
         } else {
-            _token.transfer(_to, _amount);
+            require(SafeERC20.transfer(_token, _to, _amount), "LimitOrders#_transferAmount: TOKEN_TRANSFER_FAILED");
         }
     }
 }
