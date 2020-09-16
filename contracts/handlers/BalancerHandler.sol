@@ -9,7 +9,7 @@ import "../interfaces/IWETH.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IHandler.sol";
 
-/// @notice UniswapV1 Handler used to execute an order
+/// @notice BalancerHandler Handler used to execute an order
 
 interface PoolInterface {
     function swapExactAmountIn(address, uint, address, uint, uint) external returns (uint, uint);
@@ -32,7 +32,7 @@ contract BalancerHandler is IHandler, Order {
 
     /// @notice receive ETH
     receive() external override payable {
-        require(msg.sender != tx.origin, "UniswapV1Handler#receive: NO_SEND_ETH_PLEASE");
+        require(msg.sender != tx.origin, "BalancerHandler#receive: NO_SEND_ETH_PLEASE");
     }
 
     /**
@@ -100,7 +100,7 @@ contract BalancerHandler is IHandler, Order {
 
         // Send fee to relayer
         (bool successRelayer,) = relayer.call{value: fee}("");
-        require(successRelayer, "UniswapV2Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
+        require(successRelayer, "BalancerHandler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
     }
 
     /**

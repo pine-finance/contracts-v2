@@ -8,7 +8,7 @@ import "../commons/Order.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IHandler.sol";
 
-/// @notice UniswapV1 Handler used to execute an order
+/// @notice OneinchHandler Handler used to execute an order
 
 interface IOneSplitWrapper {
     function swap(
@@ -38,7 +38,7 @@ contract OneinchHandler is IHandler, Order {
 
     /// @notice receive ETH
     receive() external override payable {
-        require(msg.sender != tx.origin, "UniswapV1Handler#receive: NO_SEND_ETH_PLEASE");
+        require(msg.sender != tx.origin, "OneinchHandler#receive: NO_SEND_ETH_PLEASE");
     }
 
     /**
@@ -74,7 +74,7 @@ contract OneinchHandler is IHandler, Order {
 
             // Send amount bought
             (bool successSender,) = msg.sender.call{value: bought}("");
-            require(successSender, "UniswapV1Handler#handle: TRANSFER_ETH_TO_CALLER_FAILED");
+            require(successSender, "OneinchHandler#handle: TRANSFER_ETH_TO_CALLER_FAILED");
         } else {
             // Convert from fromToken to ETH
             uint256 boughtEth = _swap(inputToken, ETH_ADDRESS, inputAmount, address(this), distributionsA, flag);
@@ -85,7 +85,7 @@ contract OneinchHandler is IHandler, Order {
 
         // Send fee to relayer
         (bool successRelayer,) = relayer.call{value: fee}("");
-        require(successRelayer, "UniswapV1Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
+        require(successRelayer, "OneinchHandler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
     }
 
     /**
