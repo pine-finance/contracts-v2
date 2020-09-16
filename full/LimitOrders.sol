@@ -83,7 +83,7 @@ interface IERC20 {
 
 // File: contracts/interfaces/IModule.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 pragma solidity ^0.6.8;
 
 
@@ -128,7 +128,7 @@ interface IModule {
 
 // File: contracts/interfaces/IHandler.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 pragma solidity ^0.6.8;
 
 
@@ -173,7 +173,7 @@ interface IHandler {
 
 // File: contracts/commons/Order.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -184,7 +184,7 @@ contract Order {
 
 // File: contracts/libs/SafeMath.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -338,7 +338,7 @@ library SafeMath {
 
 // File: contracts/libs/SafeERC20.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -353,7 +353,7 @@ library SafeERC20 {
 
 // File: contracts/libs/PineUtils.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -396,7 +396,7 @@ library PineUtils {
 
 // File: contracts/modules/LimitOrders.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 

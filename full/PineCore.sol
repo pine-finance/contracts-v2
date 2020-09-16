@@ -155,7 +155,6 @@ library SafeMath {
 
 // File: contracts/libs/ECDSA.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -241,7 +240,6 @@ library ECDSA {
 
 // File: contracts/interfaces/IERC20.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -323,7 +321,6 @@ interface IERC20 {
 
 // File: contracts/libs/Fabric.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -426,7 +423,6 @@ library Fabric {
 
 // File: contracts/interfaces/IModule.sol
 
-// SPDX-License-Identifier: GPL-2.0
 pragma solidity ^0.6.8;
 
 
@@ -471,7 +467,6 @@ interface IModule {
 
 // File: contracts/commons/Order.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 
@@ -482,7 +477,6 @@ contract Order {
 
 // File: contracts/PineCore.sol
 
-// SPDX-License-Identifier: GPL-2.0
 
 pragma solidity ^0.6.8;
 

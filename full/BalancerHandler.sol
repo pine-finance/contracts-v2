@@ -155,7 +155,7 @@ library SafeMath {
 
 // File: contracts/interfaces/IERC20.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -237,7 +237,7 @@ interface IERC20 {
 
 // File: contracts/libs/SafeERC20.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -252,7 +252,7 @@ library SafeERC20 {
 
 // File: contracts/libs/PineUtils.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -295,7 +295,7 @@ library PineUtils {
 
 // File: contracts/commons/Order.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -306,7 +306,7 @@ contract Order {
 
 // File: contracts/interfaces/IWETH.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -319,7 +319,7 @@ interface IWETH is IERC20 {
 
 // File: contracts/interfaces/IHandler.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 pragma solidity ^0.6.8;
 
 
@@ -364,7 +364,7 @@ interface IHandler {
 
 // File: contracts/handlers/BalancerHandler.sol
 
-// SPDX-License-Identifier: GPL-2.0
+
 
 pragma solidity ^0.6.8;
 
@@ -374,7 +374,7 @@ pragma solidity ^0.6.8;
 
 
 
-/// @notice UniswapV1 Handler used to execute an order
+/// @notice BalancerHandler Handler used to execute an order
 
 interface PoolInterface {
     function swapExactAmountIn(address, uint, address, uint, uint) external returns (uint, uint);
@@ -397,7 +397,7 @@ contract BalancerHandler is IHandler, Order {
 
     /// @notice receive ETH
     receive() external override payable {
-        require(msg.sender != tx.origin, "UniswapV1Handler#receive: NO_SEND_ETH_PLEASE");
+        require(msg.sender != tx.origin, "BalancerHandler#receive: NO_SEND_ETH_PLEASE");
     }
 
     /**
@@ -465,7 +465,7 @@ contract BalancerHandler is IHandler, Order {
 
         // Send fee to relayer
         (bool successRelayer,) = relayer.call{value: fee}("");
-        require(successRelayer, "UniswapV2Handler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
+        require(successRelayer, "BalancerHandler#handle: TRANSFER_ETH_TO_RELAYER_FAILED");
     }
 
     /**
