@@ -369,7 +369,7 @@ interface IKyberNetworkProxy {
 }
 
 
-/// @notice UniswapV1 Handler used to execute an order
+/// @notice Kyber Handler used to execute an order
 contract KyberHandler is IHandler, Order {
 
     using SafeMath for uint256;
@@ -451,7 +451,7 @@ contract KyberHandler is IHandler, Order {
     ) private returns (uint256) {
         uint256 value = 0;
         if (_inputToken != IERC20(ETH_ADDRESS)) {
-        // Check if previous allowance is enough and approve Uniswap if not
+        // Check if previous allowance is enough and approve kyberProxy if not
             uint256 prevAllowance = _inputToken.allowance(address(this), address(kyberProxy));
             if (prevAllowance < _amount) {
                 if (prevAllowance != 0) {
